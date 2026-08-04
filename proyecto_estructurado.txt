@@ -1,0 +1,81 @@
+# Aplicacion: Motor de Respuesta a Exposicion de Credenciales
+
+## Vision General
+Sistema automatico que detecta, evalua y responde a exposiciones de credenciales (secrets/keys) en infraestructura cloud multi-proveedor. El stack tecnologico principal es Java con Spring Boot. La infraestructura cloud sera escalada a un proveedor con plan gratuito o de bajo costo.
+
+## Tecnologias del Stack
+- Backend: Java con Spring Boot
+- Motor de Reglas: Drools para la evaluacion de riesgo y reglas de negocio
+- Cloud: Multi-proveedor (AWS, Azure, GCP), se prioriza costos bajos/plan free
+- Logs/Trazabilidad: sistema de registro estructurado de todos los pasos del proceso
+
+## Componentes Principales
+
+### 1. Integrador de Alertas
+- Recibe alertas de exposicion de credenciales desde plataformas externas (GitGuardian, etc.) mediante webhooks o API polling
+- Normaliza la informacion recibida en un formato interno comun
+- Persiste cada alerta entrante con timestamp y metadatos originales
+
+### 2. Motor de Verificacion
+Para cada alerta recibida:
+- Corrobora si el secret expuesto es valido/acceso activo contra la infraestructura del cliente (mediante APIs cloud como AWS STS, Azure AD Graph, etc.)
+- Identifica a que servicios/sistemas afecta
+
+### 3. Motor de Evaluacion de Riesgo (Drools)
+- Define reglas de negocio en archivos Drools (.drl) configurables por cliente
+- Cada regla define el nivel de criticidad segun atributos del secret expuesto (ej: key de produccion = CRITICO, desarrollo = BAJO)
+- Carga las reglas dinamicamente sin necesidad de reiniciar la aplicacion
+- Evalua cada alerta verificada contra las reglas activas y asigna un nivel de severidad
+
+### 4. Motor de Decision
+- Utiliza Drools para determinar la accion automatica en base a: criticidad del secret x reglas por cliente
+- Acciones posibles: notificar al equipo afectado o rotar automaticamente las credenciales conectandose al proveedor
+- Fase 1 de implementacion: solo AWS (API key rotation)
+- Las reglas Drools definen que accion tomar segun cada regla de negocio
+
+### 5. Interfaz de Configuracion (GUI)
+- Permite a los clientes definir sus reglas de negocio para evaluacion de criticidad
+- Permite configurar que acciones tomar segun el nivel de severidad
+- Gestion de archivos de reglas Drools (.drl) por cliente
+
+### 6. Sistema de Trazabilidad y Logs
+- Registra cada paso del flujo completo (llegada de alerta, verification, evaluacion, decision, accion)
+- Almacena los razonamientos del motor de decisiones (que regla se activo, porque se tomo esa decision)
+- Los logs son estructurados, queryables y clasificables por cliente, severidad, fecha y tiempo de ejecucion
+- Permite debug y consulta por parte del cliente para entender que sucedio y porque
+
+## Flujo Tipico
+1. Alerta de exposicion entra al sistema -> 2. Sistema registra la alerta en logs -> 3. Sistema verifica si el secret es valido y como afecta la infraestructura -> 4. Drools evalua criticidad con reglas del cliente -> 5. Drools decide que accion tomar -> 6. Ejecuta la accion (notificar o rotar credentials) -> 7. Todo el proceso se registra para trazabilidad
+
+## Releases y Etapas de Desarrollo
+
+### Release 1 - Cierre: 27/08
+**Enfoque: Playbooks, Motor de Analisis y Criticidad**
+- Definicion y codificacion de los playbooks de respuesta ante incidentes (base de decisiones del sistema)
+- Los playbooks tendran menor peso que las reglas definidas por el cliente en la ecuacion de riesgo
+- Desarrollo del motor de analisis para determinar criticidad
+- Desarrollo del motor de calculo de blast radius de identidades expuestas
+- Stack de pruebas unitarias y de logica de decision
+
+### Release 2 - Cierre: 24/09
+**Enfoque: Integracion y Analisis Cloud**
+- Desarrollo de webhooks para ingesta de eventos
+- Implementacion de analisis contra proveedores cloud
+- Validacion del estado de identidades detectadas
+- Validacion de permisos de acceso de las identidades expuestas
+- Stack de pruebas de integracion con APIs de AWS
+
+### Release 3 - Cierre: 05/11
+**Enfoque: Alertas y Toma de Acciones**
+- Implementacion del modulo de acciones
+- Logica de accion automatica (revocacion, rotacion o aviso) basada en los playbooks del Release 1
+- Implementacion de rotacion en AWS
+- Dashboard administrativo para visualizacion y configuracion
+- Stack de pruebas end-to-end del flujo completo
+
+### Cierre del Proyecto
+- Pruebas integrales finales
+- Documentacion del sistema
+- Manuales de usuario y operacion
+- Hardenizaci\u00f3n de ambiente de produccion
+- Handover al equipo del cliente

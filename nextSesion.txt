@@ -1,0 +1,224 @@
+TEMAS PARA EXPLORAR EN PROXIMA SESION
+1. Motor de Decision + Acciones (Rotate/Notify)
+Contexto
+- Rules Drools evaluan criticidad y determinan que accion tomar
+- Acciones posibles:
+- Notificar al equipo afectado (slack, email, ticket)
+- Rotar automaticamente credenciales conectandose al proveedor
+- Revocar credentials (para R3)
+Questions a resolver
+┌───────────────────────────────────────────────┐
+│ Como se combinan playbooks vs reglas del       │
+│ cliente?                                      │
+│                                                │
+│ playbook_standard + reglas_cliente =           │
+│ Decision final                                 │
+└───────────────────────────────────────────────┘
+- Los playbooks tienen menor peso que las reglas definidas por el cliente. Como se combina exactamente? ¿Max de los dos? promedio? alguna logica pesada?
+- Para rotation automática: como se ejecuta la accion de forma segura y auditada?
+- AWS STS UpdateAccessKey para rotar access keys?
+- Que pasa si rotate falla? retry strategy? rollback?
+- state machine para el ciclo de vida de una rotacion
+┌───────────────┐     ┌──────────────┐      ┌────────────┐
+│ Rotando key   │    └──▶ Success:   │──▶ Notificar ✅ │
+│ AKIA...       │     └──▶ Fail:     │──▶ Retry x3    │
+└───────┬───────┘     ┌──────────────┐      └────────────┘
+        │              Failed → Escalar a   │
+        ▼             humano               │
+┌──────────────┐                              │
+│ Timeout?     │ ◀──  Si fallo rotar, que    │
+└──────────────┘     hacer?                   │
+- Que pasa cuando la rotacion afecta servicios en produccion? ¿Hay ventana de downtime mientras se propaga el cambio?
+2. Arquitectura Drools - Reglas por Cliente + Carga DInamica
+Contexto
+- Cada cliente puede tener sus propias reglas de negocio (archivos .drl)
+- Se debe cargar sin reiniciar la aplicacion
+Questions a resolver
+┌───────────────────────────────────────────────┐
+│ Multi-tenancy en Drools:                     │
+│                                                │
+│ Opcion A: Un solo KieContainer con            │
+│           reglas por tenant en namespace      │
+│                                                │
+│ Opcion B: KieContainer por cliente ( aislado) │
+│                                                │
+│ Opcion C: KieFileSystem en memoria            │
+│           recargando al vuelo  (hot-reload)   │
+└───────────────────────────────────────────────────────────────┘
+- Como se almacenan los archivos .drl de cada cliente? ¿DB, filesystem, object storage?
+- Versionado de reglas — si cambian reglas activas en production, que pasa con alertas en vuelo?
+- Conflict resolution: dos reglas para el mismo cliente vs la misma credencial, como Drools decide cual gana?
+- Performance: evaluacion de reglas por alerta es fast path (sub-ms target?) o puede ser slow?
+┌──────────┐  .drl-file   ┌────────────┐
+│ Cliente A │────────────▶│ KieContainer │─▶ CRITICO if s3_write=true
+├──────────┤              │            ├─▶ ALTO if ec2_modify=true
+│ Cliente B │────────────▶│            ├───▶ MEDIA if iam_read=true
+└──────────┘  .drl-file   └────────────┘
+- Como se define una regla Drools para este problema? Ejemplo: un archivo .drl que se active si blast radius tiene s3_write y last_used > 30 days. Que condiciones son interesantes?
+3. Playbooks de Respuesta vs Reglas del Cliente
+Contexto
+- R1 incluye "definicion y codificacion de playbooks"
+- Los playbooks tienen MENOR peso que las reglas del cliente
+Questions a resolver
+┌───────────────────────────────────────────────┐
+│ Playbook standard vs Client Rules            │
+│                                                │
+│  Playbook para AWS credencial expuesta:       │
+│    if s3_full_access → NOTIFICAR INMEDIATAMENTE│
+│    if iam_modify →   ROTATE en < 15 min      │
+│    if nothing active ──▶ LOGUEAR, cerrar       │
+│                                                │
+│ Cliente puede sobre-escribir:                  │
+│    "No rotar automaticamente sin aprobacion     │
+│     manual aunque IAM modify=true"            │
+│                                                │
+│  Resultado final = ??? (combinacion)         │
+└───────────────────────────────────────────────┘
+- Que playbooks standard queremos para los tipos comunes de credenciales?
+- AWS Access Key expuesta → playbook_xxx
+- Azure Service Principal → playbook_abc
+- etc.
+- Como se expresa un playbook en formato estructurado (JSON? YAML?) para que sea "base decision" pero no la palabra final
+- Los playbooks son globales o también por cliente?
+4. Integrador de Alertas + Webhooks
+Contexto
+- R2: desarrollo de webhooks para ingesta de eventos
+- R1: recibir alerts from external platforms (GitGuardian, etc.) via webhooks or API polling
+Questions a resolver
+┌───────────────────────────────────────────────┐
+│ Webhook vs Polling                            │
+│                                                │
+│  webhook endpoint (POST /api/alerts)          │      ✅ Real-time     │
+│  poller (cada N min)                         │   ❌ Latency N mins   │
+└──────────────────────────────.────────────────┘
+- Formato exacto del webhook payload? ¿GitGuardian API v2? REST? event structure?
+- Como se valida la autenticidad del webhook recibido? (secret header, IP whitelist)
+- Que pasa si llegan dos alertas del mismo secret en 1 segundo? De-duplication?
+- Queue strategy: ¿un solo worker o pool de workers para procesar alertas concurrentemente?
+┌───────────────┐      ┌───────────────┐     ┌────────────────┐
+│  Webhook /    │ ───▶ │ Parse +       │ ───▶ │ Normalized     │
+│  Polling API  │      │ Validate      │     │ Alert Model    │
+└───────────────┘      └───────────────┘     └────────────────┘
+                              │                        │
+                              ▼                        ▼
+                   Is valid?                  Persist with metadata
+                     │                       + timestamps
+                     ┐                       + raw alert data
+                     └──▶ Fail → Log error
+- Como se manejan los webhooks fallidos o con formato invalido? (dead letter queue?)
+5. Sistema de Trazabilidad y Logs Estructurados
+Contextos
+- R1 y R3 mencionan trazabilidad del flujo completo
+- Almacenar razonamientos de decisiones (que regla se activo, porque se tomo esa decision)
+- Queryable y clasificable por: cliente, severidad, fecha, tiempo de ejecucion
+Questions a resolver
+┌───────────────────────────────────────────────┐
+│ ¿Donde se almacenan los logs?                │
+│                                                │
+│ Option A: ELK Stack (ElasticSearch +         │      ✅ Queryable   │   
+│           Logstash)                         │    ❌ Heavy infra     │
+│                                                │   ❌ Costo            │
+├──────────────────────────────────────────────┤
+│ Option B: PostgreSQL with JSONB              ├─── ✅ Simple          │  
+│            (una tabla events con payload)    │    ✅ Cheap on free tier│
+│                                                │   ❌ No full-text     │
+├──────────────────────────────────────────────┤
+│ Option C: Lightweight log + DB metadata      ├─▶ Logs to file/S3    │
+│         queryable via structured columns     │         metadata→DB   │
+└──────────────────────────────────────────────┘    query by client/severity│
+
+- Que estructura debe tener un "razonamiento de decision" (decision rationale)?
+- Ejemplo: {"rule_fired": "crit3", "reason": "s3_write=true + prod=true", "severity": "CRITICO"}
+- Niveles de log que necesitamos? INFO, WARN, ERROR, AUDIT?
+- ¿Retencion de logs? ¿Por tiempo o por cliente?
+┌────────────── Event Record ──────────────┐
+│  alert_id: abc123                         │
+│ client_id: clienta                        │
+│ timestamp: 2025-08-02T14:30:00Z          │
+│ phase: verification                       │
+│ step: permission_enum                     │
+│ duration_ms: 247                           │
+│ result: {                                │
+│   "actions": ["s3:GetObject","s3:*"],     │
+│   "blast_radius": HIGH                    │  
+│ }                                         │       
+│ ... (other phases)                        │
+└───────────────────────────────────────────┘
+6. Spring Boot Application Architecture
+Contexto
+- Backend: Java con Spring Boot  
+- Infraestructura cloud escalara a proveedor con plan gratuito o bajo costo
+- Stack de pruebas unitarias y de integracion en R1/R2/R3
+Questions a resolver
+┌───────────────────────────────────────────────┐
+│ Estructura del proyecto                       │
+│                                                │
+│   alerting/                                    │
+│   ├── controller (webhooks)                    │
+│   └── service/alert_ingester                  │
+├──────────┼────────────────────────────────────┤
+│   verification/                              │
+│   ├── provider/aws                           │
+│   ├── provider/azure                         │
+│   └── engine/verification_service             │
+├──────────┼────────────────────────────────────┤
+│   rules/                                     │
+│   ├── drools/KieService                       │
+│   └── rule_repo (JPA)                        │
+├──────────┤  ┌──▶ "Motor de Decision"          │
+│   decision/                                 │
+│   ├── engine/decision_engine                  │
+│   └── action_executor                         │
+│                                                │
+└─▼────────┴─────────────────────────────────────┘
+- Version Spring Boot? (3.x?) + Java versoin?
+- Base de datos principal (para reglas, alertas persistidas)? MySQL? PostgreSQL? H2 para dev/prod?
+- Que patrones usar: Spring Cloud Gateway? Config Server? Actuator?
+- Testing strategy: unit tests for Drools rules are notoriously hard; what framework?
+┌────────────── Client ──────────┐   ┌───────────────┐
+│ Webhook Endpoint               │──▶│ AlertConsumer  │
+│ /api/v1/alerts                 │   └──────┬────────┘
+│                                  │         │
+│ GUI for config (R3)             │         ▼
+│ /admin/rules                    ││ ValidationService │
+│                                │└─────────┬─────────┘
+│                                │          ├── RuleEngine (Drools) ├──▶
+│                                └──────────▶ DecisionEngine ──────▶
+└────────────────────────────────┘                ├── ActionExecutor ───▶
+                                                 ```
+
+---
+
+## 7. Gestion de Credenciales Admin del Cliente + Vault
+
+### Contexto (ya se discutio pero requiere diseno)
+- Como se almacenan las credenciales de admin de lectura de cada cliente?
+- Se asume access solo read-only para consultas en paneles cloud
+
+### Questions a resolver
+- **Storage**: DB propia? HashiCorp Vault? AWS Secrets Manager? 
+  - Free tier constraints (plan gratuito o bajo costo)
+- **Security**: Como se protegen en repositorio y en DB? Encriptacion?
+- **Rotation**: Las credenciales del admin cambian periodicamente; como se actualizan sin downtime?
+
+┌───────────────┐     ┌───────────┐
+│  Client A     │     │ Vault /    │
+│ AWS creds     │──▶ │ Secrets DB │  ← Encriptadas en repositorio!
+│ AWS creds     │     └───────────┘
+│ Azure creds   │         |
+└───────────────┘         ▼
+                     Read-only admin access to client's cloud
+
+---
+
+## Resumen Priorizado de Temas:
+
+1. **Motor de Decision + Acciones** — rotate/notify lifecycle, state machine
+2. **Drools por Cliente** — multi-tenancy, carga dinamica, storage .drl
+3. **Playbooks vs Reglas** — combinacion logica, que playbooks estandar
+4. **Integrador de Alertas** — webhooks format, validation, queueing
+5. **Agregado 100%** — como se almacenan las credenciales del cliente (vault/db)
+6. **Logs y Trazabilidad** — estructura, storage, queryability
+7. **Arquitectura app Spring Boot** — estructura proyecto, patterns testing
+
+**Recomendacion**: Priorizar **Drools (2 + 3)** y **Acciones (1)**, porque son el core de la logica de negocio y definen otros componentes. Luego webhooks/alertas + storage de creds.
