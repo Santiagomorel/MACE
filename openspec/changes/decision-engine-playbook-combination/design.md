@@ -52,8 +52,8 @@ auto_rotate:
 ### Decision 2: Multi-tenant Drools — KieFileSystem en Memoria (Opcion C)
 
 **Opciones evaluadas:**
-- **A. Un solo KieContainer con namespace por tenant**: Simplifica geston, pero reglas de diferentes clientes pueden colisionar si no se usa `insert(alert).update(fact)` con filtros estrictos. Mayor riesgo de cross-contamination en evaluciones.
-- **B. KieContainer por cliente (aislado)**: Aislamiento total, pero overhead significativo al mantener N containers corriendo. Escala mal con decenas de clientes.
+- **A. Un solo KieContainer con namespace por tenant**: Simplifica gestion, pero reglas de diferentes clientes pueden colisionar si no se usa `insert(alert).update(fact)` con filtros estrictos. Mayor riesgo de cross-contamination en evaluciones.
+- **B. KieContainer por cliente (aislado)**: Aislamiento total, pero overhead significativo al mantener N containers corriendo. Escala mal con decenas de clientes. Se posterga a refactor.
 - **C. KieFileSystem en memoria + recargar al vuelo** (OPCION SELECCIONADA): Equilibrio entre aislamiento y eficiencia. Cada vez que una regla cambia, se recompila solo para ese cliente sin reiniciar toda la aplicacion.
 
 **Rationale:** KieFileSystem permite hot-reload de reglas sin reinicio y aislamiento logico por cliente via namespace y fact-tags. Es el enfoque mas usado en Spring Boot + Drools (referencia: Spring DROOLS tutorial). Los `.drl` se almacenan en DB (PostgreSQL BYTEA) o filesystem (`/rules/{tenant}/`).
@@ -62,7 +62,77 @@ auto_rotate:
 - Primary: PostgreSQL table `client_rules(id, tenant_id, version, drl_content[BYTEA], created_at)`
 - Cache en memoria: LRU cache de KieContainer por tenant con TTL 5 min (invalida al detectar cambio en DB)
 
-### Decision 3: Conflict Resolution — Priority-Based Drools Agenda
+### Decision 3: Auto-generation — AWS Metadata → Reglas .drl (AWS solo R1)
+
+Para cada cliente que entrega credenciales read-only admin a su cuenta AWS, el sistema descubre automaticamente los recursos y genera reglas Drools iniciales en base a lo que se encuentra. **El cliente nunca interactua con archivos .drl**.
+
+**Pipeline de descubrimiento:**
+```
+Creds del cliente (read-only admin)
+        │
+        ▼
+┌───────────────────────────────┐
+│ AWS API Discovery (R1: AWS)  │
+│                               │
+│ ListAccessKeys()              │──▶ Keys activas + lastUsed
+│ GetPolicyAttachments()        │──▶ Policies asociadas al key
+│ GetBucketACLs()               │──▶ Buckets accesibles
+│ ListIAMRoles/Policies()       │──▶ Roles y permisos vinculados
+│ DescribeEC2Instances()        │──▶ Instancias en cuenta
+│ ResourceTags                  │──▶ Tags "prod"/"dev"/env
+└───────────────────────────────┘
+        │
+        ▼
+┌───────────────────────────────┐
+│ Mapeo a reglas base           │
+│ basadas en playbooks          │
+│                               │
+│ s3_full_access → CRITICO (piso)│
+│ iam_modify     → CRITICO (piso)│
+│ ec2_control    → ALTO   (piso) │
+│ nothing_active → BAJO   (piso) │
+└───────────────────────────────┘
+        │
+        ▼
+Generar .drl en memoria → guardar en DB → invalidar cache KieContainer
+```
+
+**Mapeo automatico de permisos → criticidades:**
+| Permiso detectado | Codigo de permiso | Severidad base (playbook floor) | Cliente puede ajustar |
+|---|---|---|---|
+| S3 Full Access + prod bucket | s3:PutObject, s3:DeleteObject in prod | CRITICO | Si/No |
+| S3 Read Only | s3:GetObject only | ALTO | Si/Bajar |
+| IAM Modify | iam:CreateUser, iam:AttachRolePolicy | CRITICO | No/Solo subir o mantener |
+| EC2 Instance Control | ec2:* on instances | ALTO | Si/No |
+| CloudWatch Read | cloudwatch:GetMetricData | MEDIA | Si/Bajar |
+| Nothing active (key > 90 days) | no policies attached | BAJO | No/eliminar regla |
+
+La generacion automatica del .drl se realiza en dos mecanismos:
+
+1. **Pull periodico** cada 3 horas (scheduled job): Descubre cambios en los recursos del cliente y regenera reglas si detecta diferencias con la version actual
+2. **Boton manual de pull**: El cliente puede disparar un descubrimiento on-demand desde la UI
+3. **Pull instantaneo al detectar exposicion**: Cuando el webhook recibe una alerta de credencial expuesta, se hace un pull inmediato solo para ese recurso afectado
+
+**Semaforo dedup:**
+- Antes de iniciar cualquier pull periodico/instantaneo se adquiere un semaphore (`rule_generation_lock`) con TTL 15 min
+- Si otro proceso Ya posee el semaphore en los primeros 30s del intervalo actual → salto y espera al siguiente ciclo
+- Esto elimina regeneraciones paralelas o duplicadas entre el pull periodico y el webhook-triggered
+
+**Manejo de credenciales expiradas:**
+- Si las AWS creds de lectura del cliente caducan y el discovery falla por acceso denegado (AccessDenied/AWSSTSExpired) → notificar al cliente que debe actualizar sus creds
+- No se regeneran reglas si no se pueden obtener los metadatos — estado queda `PENDING: CRED_REFRESH` hasta que el cliente las renueve
+
+### Decision 4: Cliente UI — Nunca tocar archivos .drl
+
+El cliente interactua exclusivamente con una interfaz web donde:
+- Ve las reglas auto-generated con los niveles de criticidad sugeridos por el mapeo de playbooks
+- **Puede subir** cualquier nivel (ejcrítico ← ALTO) sin validacion adicional
+- **Puede bajar** solo si la playbook floor lo permite (no puede bajar debajo del minimo del playbook estandar — ej no reducir S3 Full Access desde CRITICO a MENOR)
+- Cada cambio queda registradocomo `manual_override_by_client = true` con timestamp y usuario
+
+El sistema traduce esos ajustes a .drl internamente y recarga el KieContainer correspondiente.
+
+### Decision 5: Conflict Resolution — Priority-Based Drools Agenda
 
 Drools resuelve conflictos automaticamente mediante `salience` (prioridad). Cada regla del cliente se califica con saliencia basica de su severidad:
 - CRITICO → salience 100
@@ -74,7 +144,7 @@ En caso de empate, drools evalua por orden cronologico inverso (ultima definicio
 
 **Decision explicita:** Dos reglas para el mismo cliente y misma credencial se resuelve en Drools nativamente via `salience`. No se necesita logica custom.
 
-### Decision 4: Versionado — Rules Always Get Latest, In-Flight Alerts Keep Current Severity
+### Decision 6: Versionado — Rules Always Get Latest, In-Flight Alerts Keep Current Severity
 
 Cuando cambian las reglas activas en production:
 - **Alerta en vuelo al momento del cambio**: Se evalua con la version de reglas vigente cuando el webhook se recibio y la verificacion se completo. Su criticidad ya fue calculada y no cambia.
@@ -110,3 +180,6 @@ Este es parte del segundo modulo critico del sistema. No hay migracion, solo ext
 1. **Notificaciones**: ¿Por qué canal (Slack, email, Jira, custom) se debe notificar a cada cliente? Definir `notification_profile` por cliente en R2.
 2. **AWS STS UpdateAccessKey timing exacto**: El tiempo de propagacion real despues de poner una access key como INACTIVE puede variar. Se debe validar con pruebas reales de AWS.
 3. **Cantidad maxima de reglas Drools que Drools soporta eficientemente**? Evaluar cuando se detecte el problema real en produccion. No hay suficiente info para definir limite hoy.
+4. **AWS API quotas y rate limits**: ¿El pull periodico de cada 3 horas + descubrimiento instantaneo cumple dentro de los AWS Service Quotas (ListAccessKeys: 5/s, GetPolicyAttachments: 10/s)?
+5. **Politica de "bajar" criticidades del cliente**: ¿Un cliente puede bajar S3 Full Access de CRITICO a ALTO o el playbook floor debe ser infranqueable? Decision actual: no por debajo del piso del playbook (CRITICO), si pero con nota obligatoria.
+6. **Semaforo dedup — TTL ideal**: ¿15 minutos es suficiente para evitar regeneraciones duplicadas entre pull periodico y webhook-triggered?
