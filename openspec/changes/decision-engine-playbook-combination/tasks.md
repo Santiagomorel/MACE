@@ -52,7 +52,7 @@
   - GetBucketACLs() → buckets accesibles y permisos
   - ListIAMRoles/Policies() → roles y permisos vinculados
   - DescribeEC2Instances() → instancias en cuenta
-- [ ] 7.2 Implementar mapeo automatico de permisos detectados a severidades base (playbook_floor): s3_full_access → CRITICO, iam_modify → CRITICO, ec2_control → ALTO, nothing_active → BAJO
+- [ ] 7.2 Implementar mapeo automatico de permisos detectados a severidades base (playbook_floor): s3_full_access → CRITICO, iam_modify → CRITICO, ec2_instance_control → CRITICO, nothing_active → BAJO
 - [ ] 7.3 Generar .drl en memoria basado en metadata descubierta + mapeo de severidades → guardarlo en DB `client_rules` → invalidar cache LRU del KieContainer del tenant
 - [ ] 7.4 Manejar credenciales expiradas: si las AWS creds de lectura del cliente caducan y el discovery falla (AccessDenied/AWSSTSExpired) → no regenerar reglas, estado queda `PENDING: CRED_REFRESH`, notificar al cliente
 
@@ -90,3 +90,60 @@
 - [ ] 12.4 Test unitario: hot-reload sin reinicio de aplicacion cuando se actualizan reglas
 - [ ] 12.5 Test de integracion: pipeline completo — alerta → verdict → decision engine output → action-executor input
 - [ ] 12.6 Test end-to-end con KieContainer real (no mock) validando compilacion y carga dinámica
+
+## 13. Drools Rule Auto-Generation Service (Decision 7)
+
+- [ ] 13.1 Implementar `DroolsRuleGenerator` que toma un Playbook YAML + metadata descubierta -> genera archivo .drl en memoria:
+  ```
+  package com.security.rules.<tenant_id>;
+  // This file was auto-generated from playbook <playbook_id> (version X.Y.Z) on <timestamp>
+  // compliance: <compliance_tags source + control_description joined with "> - " joining>
+  import io.security.domain.Alert;
+  import io.security.domain.CredentialMetadata;
+  ...
+  rule "<tenant_id>_severity_level"
+    salience <mapped_salience>  /* CRITICO=100, ALTO=80, MEDIA=60, BAJO=40 */
+    no-loop true
+    lock-on-active true
+    agenda-group "rules_<tenant_id>"
+    when
+      alert: Alert( tenantId == "<tenant_id>", credential.type == "<AKIA|ASIA|root_>" )
+      ... (conditions for each permission detected - e.g., s3_full_access)
+    then
+      alert.severity = Severity.<LEVEL>; /* <mapped_severidad> */
+      alert.playbookId = "<playbook_id>";
+      insert(alert);
+  end
+  ```
+- [ ] 13.2 Generar una regla por permutation de detected permisos del cliente, combinando con los severity_floor categories del playbook (s3_full_access -> CRITICO, iam_modify -> CRITICO, etc.)
+- [ ] 13.3 Insertar `compliance_tags` como comentarios al inicio del .drl:
+  ```java
+  // compliance: ISO 27001-A.9.4.1 - Management of information systems addresses and directory levels > ISO 27001-A.9.2.2 - Registration of user access
+  ```
+- [ ] 13.4 Validar generacion produce .drl de menos de 50 KB para un cliente typico (max reglas = permisos_detectados * credential_types)
+- [ ] 13.5 Generar agenda-group `"rules_<tenant_id>"` por tenant - drools activa este grupo via `kieSession.getAgenda().getAgendaGroup("rules_<tenant_id>").setFocus();`
+- [ ] 13.6 Incluir `no-loop true` y `lock-on-active true` para evitar ejecucion infinita de reglas Drools (practica Drools estandar)
+
+## 14. AWS Metadata Discovery Pipeline Integration
+
+- [ ] 14.1 Implementar `AwsMetadataDiscoveryService` con metodo `discover(tenantId)` que:
+  - Recarga credenciales del cliente desde el secrets store
+  - Llama a `ListAccessKeys()` -> extrae list de keys activas + `LastUsedDate`
+  - Para cada key activa, llame `GetPolicyAttachments()` -> extraje attached IAM policies (s3_full_access, iam_modify, ec2_instance_control, etc.) como `permission_categories`
+  - Llama a `ListBucketAccessControlLists()` (o `ListBucketPolicies()`) para buckets S3 activos del tenant
+  - Llama a `DescribeEC2Instances(Filters=[...]) -> count de instancias EC2 en la cuenta del cliente
+- [ ] 14.2 Mapear permisos descubiertos a severity_floor categories del playbook:
+  | Permiso AWS API retorno | Category key -> severity_floor lookup | Nota |
+  |---|---|---|
+  | `s3_full_access` | `CRITICO` | cualquier bucket writable = riesgo de data exfiltration |
+  | `iam_modify` | `CRITICO` | IAM modify permite crear/rotar claves a discrecion del atacante |
+  | `ec2_instance_control` | `CRITICO` | EC2 full access puede usarse como pivoting host |
+  | `ec2_read_only` | `MEDIA` | lectura limitada no da control de recursos |
+  | `s3_read_only` | `ALTO` | lectura de datos sensibles posible pero mas baja que write/modify |
+  | `nothing_active` | `BAJO` | key activa pero sin permisos o lastUsed > 90 days ago |
+- [ ] 14.3 Al obtener resultados: invocar `DroolsRuleGenerator.generate(playbook, discoveredPermissions)` -> guardar resultado en tabla `client_rules` como nueva version (auto-incremento) -> invalidar cache LRU del KieContainer de ese tenant (trigger DB insert/rollback de triggers o polling por TTL expiration 5 minutos)
+- [ ] 14.4 Manejar caso de credentials expiradas: si AWS API retorna `AccessDenied` OR `AWSSTSExpired`:
+  - No generar reglas - estado queda `PENDING: CRED_REFRESH`
+  - Disparar notificacion al cliente para refrescar credenciales de lectura
+  - Mantener reglas anteriores hasta que las nuevas sean refreshed y descubiertas con exito
+- [ ] 14.5 Implementar "safe mode" fallback cuando discovery falla en production sin error explicito: mantener ultima version discoverada + alertas `PENDING: RECON`
