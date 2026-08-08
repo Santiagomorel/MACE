@@ -1,5 +1,5 @@
 TEMAS PARA EXPLORAR EN PROXIMA SESION
-1. Motor de Decision + Acciones (Rotate/Notify)
+1. Motor de Decision + Acciones (Rotate/Notify) DONE
 Contexto
 - Rules Drools evaluan criticidad y determinan que accion tomar
 - Acciones posibles:
@@ -29,7 +29,7 @@ Questions a resolver
 │ Timeout?     │ ◀──  Si fallo rotar, que    │
 └──────────────┘     hacer?                   │
 - Que pasa cuando la rotacion afecta servicios en produccion? ¿Hay ventana de downtime mientras se propaga el cambio?
-2. Arquitectura Drools - Reglas por Cliente + Carga DInamica
+2. Arquitectura Drools - Reglas por Cliente + Carga DInamica DONE
 Contexto
 - Cada cliente puede tener sus propias reglas de negocio (archivos .drl)
 - Se debe cargar sin reiniciar la aplicacion
@@ -55,7 +55,7 @@ Questions a resolver
 │ Cliente B │────────────▶│            ├───▶ MEDIA if iam_read=true
 └──────────┘  .drl-file   └────────────┘
 - Como se define una regla Drools para este problema? Ejemplo: un archivo .drl que se active si blast radius tiene s3_write y last_used > 30 days. Que condiciones son interesantes?
-3. Playbooks de Respuesta vs Reglas del Cliente
+3. Playbooks de Respuesta vs Reglas del Cliente DONE
 Contexto
 - R1 incluye "definicion y codificacion de playbooks"
 - Los playbooks tienen MENOR peso que las reglas del cliente
@@ -80,7 +80,7 @@ Questions a resolver
 - etc.
 - Como se expresa un playbook en formato estructurado (JSON? YAML?) para que sea "base decision" pero no la palabra final
 - Los playbooks son globales o también por cliente?
-4. Integrador de Alertas + Webhooks
+4. Integrador de Alertas + Webhooks DONE
 Contexto
 - R2: desarrollo de webhooks para ingesta de eventos
 - R1: recibir alerts from external platforms (GitGuardian, etc.) via webhooks or API polling
@@ -106,7 +106,7 @@ Questions a resolver
                      ┐                       + raw alert data
                      └──▶ Fail → Log error
 - Como se manejan los webhooks fallidos o con formato invalido? (dead letter queue?)
-5. Sistema de Trazabilidad y Logs Estructurados
+5. Sistema de Trazabilidad y Logs Estructurados DONE
 Contextos
 - R1 y R3 mencionan trazabilidad del flujo completo
 - Almacenar razonamientos de decisiones (que regla se activo, porque se tomo esa decision)
