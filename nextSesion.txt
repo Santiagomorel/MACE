@@ -189,17 +189,19 @@ Questions a resolver
 
 ---
 
-## 7. Gestion de Credenciales Admin del Cliente + Vault
+## 7. Gestion de Credenciales Admin del Cliente + Vault ✅ DONE
 
-### Contexto (ya se discutio pero requiere diseno)
+### Contexto
 - Como se almacenan las credenciales de admin de lectura de cada cliente?
 - Se asume access solo read-only para consultas en paneles cloud
 
-### Questions a resolver
-- **Storage**: DB propia? HashiCorp Vault? AWS Secrets Manager? 
-  - Free tier constraints (plan gratuito o bajo costo)
-- **Security**: Como se protegen en repositorio y en DB? Encriptacion?
-- **Rotation**: Las credenciales del admin cambian periodicamente; como se actualizan sin downtime?
+### Decision adoptada (arquitectura.md — Bloque E, Punto 7)
+- **Estrategia:** Doble capa — AWS Secrets Manager (prod) + PostgreSQL encrypted (backup)
+- **Storage:** Secrets Manager path `/clients/{tenant-id}/` por cliente
+- **Security:** Encriptacion AES-256 en DB, IAM role minimo, nunca en git ni logs
+- **Rotation:** Manual en POC (admin endpoint), automatica cada 90 dias en prod (Lambda)
+- **Zero downtime:** dual-write durante transicion
+- **POC:** `.env.{tenant}` locales + DB encrypted + `SecretVaultService` con mock backend
 
 ┌───────────────┐     ┌───────────┐
 │  Client A     │     │ Vault /    │
@@ -213,12 +215,14 @@ Questions a resolver
 
 ## Resumen Priorizado de Temas:
 
-1. **Motor de Decision + Acciones** — rotate/notify lifecycle, state machine
-2. **Drools por Cliente** — multi-tenancy, carga dinamica, storage .drl
-3. **Playbooks vs Reglas** — combinacion logica, que playbooks estandar
-4. **Integrador de Alertas** — webhooks format, validation, queueing
-5. **Agregado 100%** — como se almacenan las credenciales del cliente (vault/db)
-6. **Logs y Trazabilidad** — estructura, storage, queryability
-7. **Arquitectura app Spring Boot** — estructura proyecto, patterns testing
+1. ~~**Motor de Decision + Acciones**~~ ✅ DONE — rotate/notify lifecycle, state machine
+2. ~~**Drools por Cliente**~~ ✅ DONE — multi-tenancy, carga dinamica, storage .drl
+3. ~~**Playbooks vs Reglas**~~ ✅ DONE — combinacion logica, que playbooks estandar
+4. ~~**Integrador de Alertas**~~ ✅ DONE — webhooks format, validation, queueing
+5. ~~**Agregado 100%**~~ ✅ DONE — como se almacenan las credenciales del cliente (vault/db)
+6. ~~**Logs y Trazabilidad**~~ ✅ DONE — estructura, storage, queryability
+7. ~~**Arquitectura app Spring Boot**~~ ✅ DONE — estructura proyecto, patterns testing
+8. ~~**Gestion Credenciales Admin del Cliente + Vault**~~ ✅ DONE — Punto 7, doble capa, rotation
+9. ~~**Costos y alternativas gratuitas**~~ ✅ DONE — estrategia 3 fases ($0 → $0-10 → $57-97)
 
-**Recomendacion**: Priorizar **Drools (2 + 3)** y **Acciones (1)**, porque son el core de la logica de negocio y definen otros componentes. Luego webhooks/alertas + storage de creds.
+**Todos los temas de nextSesion.txt estan cubiertos en arquitectura.md.** Luego webhooks/alertas + storage de creds.
