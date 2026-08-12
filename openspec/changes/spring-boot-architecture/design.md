@@ -145,30 +145,14 @@ Carga playbooks YAML que definen procedimientos de rotacion por tipo de credenti
 - Reglas en BD: Mas flexible, pero requiere recompilacion completa del KieContainer al cambiar reglas
 - Reglas hardcodeadas: Menos flexible, pero sin overhead de serializacion y parsing de `.drl`
 
-### Decision 5: Strategy Pattern para NotificationDispatcher
+### Decision 5: NotificationDispatcher — See `action-executor-credential-rotation`
 
-Se implementa el Strategy Pattern con la interfaz `NotificationChannel` SPI para dispatch de notificaciones.
+El NotificationDispatcher se implementa como parte del change `action-executor-credential-rotation` (ver sus tasks Section 3).
 
 **Rationale:**
-- Extension sin modificar codigo existente: nuevo canal = nueva implementacion de `NotificationChannel`
-- Multiple canales: el dispatcher itera sobre todos los canales configurados
-- Testability: cada canal es testeable en aislamiento
-
-**Canales existentes:**
-| Channel | Implementacion | Uso |
-|---------|---------------|-----|
-| Slack | `SlackNotificationChannel` | Webhook URL configurado |
-| Email | `EmailNotificationChannel` | SMTP config |
-| Ticket | `TicketNotificationChannel` | API de ticketing (Jira, ServiceNow) |
-| SNS | `SnsNotificationChannel` | AWS SNS topic |
-
-**Estados que disparan notificaciones:**
-- `ROTATION_FAILED` → Slack + Email
-- `ROTATION_ESCALATE` → Slack + Email + Ticket (todos los canales)
-
-**Alternativas consideradas:**
-- Event-driven (Kafka topics): Overhead innecesario para notifications en el mismo proceso
-- Hardcoded if-else: Violacion de Open/Closed Principle
+- El strategy pattern y los canales de notificacion (Slack, Email, Ticket, SNS) estan definidos en action-executor
+- Spring-boot-arch referencia esta decision via SPI (`NotificationChannel` en `shared/spi`)
+- Para detalles de implementacion, ver `action-executor-credential-rotation/design.md` Decision 3 y tasks Section 3
 
 ### Decision 6: Hybrid Secrets Management (AWS SM + PostgreSQL AES-256)
 

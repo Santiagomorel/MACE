@@ -2,7 +2,7 @@
 
 - [ ] 1.1 Create package organization for alerting module (controller, adapter, dedup, worker, dlq)
 - [ ] 1.2 Add Caffeine dependency to build configuration for local in-memory cache
-- [ ] 1.3 Configure webhook endpoint path `/api/alerts` in application properties
+- [ ] 1.3 Configure webhook endpoint path `/api/v1/alerts` in application properties
 - [ ] 1.4 Configure worker pool size (default 5), event dedup TTL (default 5 min), secret dedup cooldowns in application properties
 - [ ] 1.5 Define `GenericAlertModel` data model with all fields as specified in design
 - [ ] 1.6 Define `ProviderAdapter` interface with `toGenericAlert(rawPayload)` method contract
@@ -10,7 +10,7 @@
 
 ## 2. Webhook Endpoint and Authentication
 
-- [ ] 2.1 Create REST controller for `POST /api/alerts` endpoint
+- [ ] 2.1 Create REST controller for `POST /api/v1/alerts` endpoint
 - [ ] 2.2 Implement signature validation using HMAC-SHA256 (configurable per provider)
 - [ ] 2.3 Implement IP whitelist validation (configurable per provider)
 - [ ] 2.4 Add structured logging for all webhook arrivals (valid and invalid)

@@ -51,7 +51,7 @@ Se implementa un handler generico que recibe el webhook, valida la autenticidad,
 ┌─────────────────────────────────────────────────────┐
 │              Webhook Controller                      │
 │                                                      │
-│  POST /api/alerts                                    │
+│  POST /api/v1/alerts                                    │
 │    │                                                 │
 │    ├─ Signature validation                           │
 │    ├─ IP whitelist                                   │

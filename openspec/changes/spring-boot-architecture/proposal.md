@@ -25,7 +25,7 @@ Los cambios de OpenSpec existentes (`alert-integrator`, `decision-engine-playboo
 - `decision-engine`: Drools/KIE rules engine with per-tenant KieContainer hot-reload, YAML playbook manager, severity floor calculation (max of playbook floor + Drools result)
 - `action-execution`: Rotation state machine (PENDING → ROTATING → SUCCESS/FAIL), AWS rotation services (AccessKey, IAMUser, RDS), notification dispatcher (Strategy pattern: Slack, Email, Ticket, SNS), credential rotation with dual-write and verification
 - `secrets-management`: Hybrid secrets strategy — AWS Secrets Manager (primary) + PostgreSQL AES-256 encrypted columns (backup/encrypted storage), tenant credential management with double-layer protection, 90-day rotation policy, POC vs prod mode toggle
-- `observability`: Structured logging (Logback JSON + MDC + secret redaction), Spring Actuator (health/readiness/liveness), Micrometer metrics with Prometheus endpoint, audit trail via `audit_events` table, 30-day log retention with auto-purge
+- `observability`: Structured logging (Logback JSON + MDC + secret redaction), Spring Actuator (health/readiness/liveness), Micrometer metrics with Prometheus endpoint, audit trail via `audit_events` table, 90-day log retention with auto-purge
 - `testing`: Multi-layer testing strategy (unit, integration, web), Testcontainers PostgreSQL for integration tests, MockMvc for REST endpoints, JaCoCo coverage gates (70% general, 80%+ domain), Drools testing with KieFileSystem
 - `deployment`: Docker multi-stage builds, docker-compose for local/staging, GitHub Actions CI/CD, multi-environment profiles (dev/staging/prod), blue-green deployment strategy, free-tier to production migration path
 

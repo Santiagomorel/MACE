@@ -74,14 +74,14 @@ The system SHALL maintain an `audit_events` table to log all security-relevant a
 - **AND** the query uses indexed columns for efficient retrieval
 
 ### Requirement: Log retention and auto-purge
-The system SHALL enforce a 30-day log retention policy with automatic purging of old audit events.
+The system SHALL enforce a 90-day log retention policy with automatic purging of old audit events.
 
 #### Scenario: Auto-purge of old events
 - **WHEN** the scheduled purger runs (daily)
-- **THEN** it deletes `audit_events` records older than 30 days
+- **THEN** it deletes `audit_events` records older than 90 days
 - **AND** the purge operation is logged as an audit event itself
 
 #### Scenario: Retention configuration
 - **WHEN** the retention period is configured
-- **THEN** it is set to 30 days by default
+- **THEN** it is set to 90 days by default
 - **AND** the retention period is configurable via `application.yml` (`audit.retention-days`)

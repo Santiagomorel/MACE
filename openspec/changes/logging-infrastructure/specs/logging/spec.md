@@ -105,7 +105,7 @@ El sistema SHALL escribir audit events de forma sincrona (sync) a la base de dat
 - **THEN** el sistema registra el error en los logs pero no lanza excepcion; el pipeline continua normalmente
 
 ### Requirement: Audit Retention and Auto-Purge
-El sistema SHALL purgar automaticamente los audit events despues de 30 dias de retencion.
+El sistema SHALL purgar automaticamente los audit events despues de 90 dias de retencion.
 
 #### Scenario: Audit events older than 90 days are purged
 - **WHEN** el scheduled purge task se ejecuta (daily at 2:00 AM)
@@ -135,7 +135,7 @@ El sistema SHALL exponer metrics de performance a traves de Micrometer y el endp
 - **THEN** el sistema incrementa el counter `app.dedup.misses` en 1
 
 #### Scenario: Webhook received counter is incremented
-- **WHEN** un webhook es recibido por el endpoint `/api/alerts`
+- **WHEN** un webhook es recibido por el endpoint `/api/v1/alerts`
 - **THEN** el sistema incrementa el counter `app.webhook.received` en 1
 
 #### Scenario: Webhook failed counter is incremented

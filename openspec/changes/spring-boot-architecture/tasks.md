@@ -98,28 +98,14 @@
 - [ ] 7.4 Implement `RotationStateMachine` managing transitions: PENDING → ROTATING → SUCCESS|FAIL → ESCALATE
 - [ ] 7.5 Implement `AwsRotationService` for AccessKey rotation (set_inactive → wait → create → verify)
 - [ ] 7.6 Implement `AwsRotationService` for IAMUser rotation (deactivate → delete → create → verify)
-- [ ] 7.7 Implement `SnsNotificationChannel` for AWS SNS notifications
-- [ ] 7.8 Implement `SlackNotificationChannel` for Slack webhook notifications
-- [ ] 7.9 Implement `EmailNotificationChannel` for SMTP email notifications
-- [ ] 8.0 Implement `TicketNotificationChannel` for Jira/ServiceNow ticket creation
-- [ ] 8.1 Implement `NotificationDispatcher` using Strategy pattern to iterate over all configured channels
-- [ ] 8.2 Implement `ActionExecutorService` orchestrating: state machine → rotation service → verification → cleanup
-- [ ] 8.3 Implement dual-write strategy: new credentials → AWS SM + DB encrypted backup → verify → archive old
-- [ ] 8.4 Implement rotation timeout (configurable, default 5 minutes)
-- [ ] 8.5 Implement retry logic (max 3 attempts)
-- [ ] 8.6 Implement escalation notification after max retries (state ESCALATE → all channels)
-- [ ] 8.7 Create rotation action repository for persisting RotationAction
-- [ ] 8.8 Write unit tests for RotationStateMachine (all transitions, invalid transitions, max retries → ESCALATE)
-- [ ] 8.9 Write unit tests for AwsRotationService (full rotation flow, failure handling, timeout)
-- [ ] 8.10 Write unit tests for NotificationDispatcher (single channel, multiple channels, channel failure isolation)
-- [ ] 8.11 Write integration tests with Testcontainers for rotation action persistence
+- [ ] 7.7 Implement notification channels — see `action-executor-credential-rotation` tasks Section 3 for detailed tasks
 
-## 8. Secrets Management
+## 8. Secrets Management (continued)
 
 - [ ] 8.1 Implement `SecretVaultService` with AWS Secrets Manager client (prod/staging profile)
 - [ ] 8.2 Implement `SecretVaultService` fallback to PostgreSQL encrypted columns (dev/test profile)
 - [ ] 8.3 Implement `Aes256Converter` JPA AttributeConverter for column encryption
-- [ ] 8.4 Implement `SecretRedactingConverter` custom Logback converter for secret pattern redaction
+- [ ] 8.4 Implement `SecretRedactingConverter` custom Logback converter for secret pattern redaction — see `logging-infrastructure` tasks Section 3
 - [ ] 8.5 Create `client_credentials` table with AES-256 encrypted columns (access_key_encrypted, secret_key_encrypted)
 - [ ] 8.6 Implement `ClientCredentialRepository` for DB credential storage and retrieval
 - [ ] 8.7 Implement credential retrieval with fallback: AWS SM primary → DB backup → error
@@ -133,20 +119,22 @@
 
 ## 9. Observability
 
-- [ ] 9.1 Configure Logback with JSON layout appender (Logstash JSON format)
-- [ ] 9.2 Configure MDC context propagation (tenantId, alertId, sessionId) via `HandlerInterceptor`
-- [ ] 9.3 Add `SecretRedactingConverter` to Logback configuration
+> **Note:** Detailed logging implementation tasks are in `logging-infrastructure` change. This section covers integration and configuration only.
+
+- [ ] 9.1 Integrate Logback JSON layout — see `logging-infrastructure` tasks Section 1
+- [ ] 9.2 Configure MDC context propagation (tenantId, alertId, sessionId) via `OncePerRequestFilter` — see `logging-infrastructure` tasks Section 2
+- [ ] 9.3 Add `SecretRedactingConverter` to Logback configuration — see `logging-infrastructure` tasks Section 3
 - [ ] 9.4 Configure Spring Actuator endpoints: health, readiness, liveness, metrics, prometheus
 - [ ] 9.5 Implement custom health indicator for Secrets Manager connectivity
 - [ ] 9.6 Implement custom health indicator for Database connectivity
 - [ ] 9.7 Configure Micrometer metrics: HTTP request metrics (duration, status, method)
 - [ ] 9.8 Configure domain-specific Micrometer metrics: alerts.ingested, alerts.deduplicated, verification.completed, rotation.completed, rotation.failed
-- [ ] 9.9 Implement `AuditEventService` for persisting audit events to `audit_events` table
-- [ ] 9.10 Implement `AuditEventRepository` for querying audit events
-- [ ] 9.11 Implement scheduled audit event purger (delete events older than 30 days)
+- [ ] 9.9 Integrate `AuditEventService` — see `logging-infrastructure` tasks Section 5
+- [ ] 9.10 Integrate `AuditEventRepository` — see `logging-infrastructure` tasks Section 4
+- [ ] 9.11 Implement scheduled audit event purger (delete events older than 90 days) — see `logging-infrastructure` tasks Section 6
 - [ ] 9.12 Configure actuator `show-details=when-authorized` for prod profile
-- [ ] 9.13 Write unit tests for AuditEventService (persist event, query by tenantId, purge old events)
-- [ ] 9.14 Write integration tests for audit event persistence with Testcontainers
+- [ ] 9.13 Write unit tests for AuditEventService — see `logging-infrastructure` tasks Section 5
+- [ ] 9.14 Write integration tests for audit event persistence with Testcontainers — see `logging-infrastructure` tasks Section 5
 
 ## 10. Cross-Cutting Concerns
 

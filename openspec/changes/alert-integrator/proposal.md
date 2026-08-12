@@ -6,7 +6,7 @@ Los cambios activos (`motor-verificacion-credenciales`, `decision-engine-playboo
 
 ## What Changes
 
-- Endpoint webhook REST `POST /api/alerts` para ingesta en tiempo real (sin polling)
+- Endpoint webhook REST `POST /api/v1/alerts` para ingesta en tiempo real (sin polling)
 - Modelo de alerta genérico (`GenericAlertModel`) que abstrae el formato de cualquier proveedor
 - Adapter pattern: handler generico con adapters especificos por proveedor (GitGuardianAdapter como primer adapter)
 - Validacion de autenticidad de webhooks (signature validation, IP whitelist)
@@ -26,6 +26,6 @@ Los cambios activos (`motor-verificacion-credenciales`, `decision-engine-playboo
 ## Impact
 
 - Nuevo modulo `alerting` en el backend Spring Boot con subcomponentes: webhook controller, generic parser, adapter registry, dedup cache, dead letter queue, and worker pool
-- Dependencia de storage para cache de dedup (Redis o Caffeine para deployment local)
+- Dependencia de storage para cache de dedup (Redis para cache distribuido (multi-instancia), Caffeine para deployment local)
 - Input del `alert-ingestion` integra directly con el modulo `verification` del change `motor-verificacion-credenciales` via el `GenericAlertModel`
 - Los adapters producen alerts con `detectedSecret.type` explícito, desacoplando al verifier de formatos especificos de GitGuardian

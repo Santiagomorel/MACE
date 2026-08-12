@@ -1,18 +1,18 @@
 ## ADDED Requirements
 
 ### Requirement: Real-Time Webhook Ingestion Endpoint
-El sistema SHALL exponer un endpoint webhook REST `POST /api/alerts` para recibir alertas de deteccion de credenciales expuestas en tiempo real desde proveedores externos.
+El sistema SHALL exponer un endpoint webhook REST `POST /api/v1/alerts` para recibir alertas de deteccion de credenciales expuestas en tiempo real desde proveedores externos.
 
 #### Scenario: Valid webhook alert received
-- **WHEN** un proveedor externo envia un POST a `/api/alerts` con payload valido y signature autenticada
+- **WHEN** un proveedor externo envia un POST a `/api/v1/alerts` con payload valido y signature autenticada
 - **THEN** el sistema parsea el payload, lo normaliza al `GenericAlertModel`, y lo enruta al worker pool para procesamiento
 
 #### Scenario: Invalid webhook signature rejected
-- **WHEN** un POST a `/api/alerts` recibe un payload cuya signature no coincide con el secreto compartido
+- **WHEN** un POST a `/api/v1/alerts` recibe un payload cuya signature no coincide con el secreto compartido
 - **THEN** el sistema responde con HTTP 401 y registra el evento como intento de autentificacion fallida en los logs de auditoria
 
 #### Scenario: Request from untrusted IP rejected
-- **WHEN** un POST a `/api/alerts` viene de una IP que no esta en la lista de IPs permitidas del proveedor
+- **WHEN** un POST a `/api/v1/alerts` viene de una IP que no esta en la lista de IPs permitidas del proveedor
 - **THEN** el sistema responde con HTTP 403 y registra el evento en los logs de seguridad
 
 ### Requirement: Generic Alert Model
