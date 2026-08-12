@@ -1,35 +1,35 @@
 ## 1. Parent POM and Module Scaffolding
 
-- [ ] [R1] 1.1 Create parent POM with Spring Boot 3.3.x parent, Java 21, and dependencyManagement BOM
-- [ ] [R1] 1.2 Define all 6 modules in parent POM: shared/models, shared/spi, alert-integrator, verification-engine, decision-engine, action-executor
-- [ ] [R1] 1.3 Configure dependencyManagement with versions: Spring Boot 3.3.x, AWS SDK v2, Drools/KIE, Testcontainers, JaCoCo
-- [ ] [R1] 1.4 Configure pluginManagement: maven-compiler-plugin (Java 21), maven-surefire-plugin, JaCoCo (70% general gate)
+- [x] [R1] 1.1 Create parent POM with Spring Boot 3.3.x parent, Java 21, and dependencyManagement BOM
+- [x] [R1] 1.2 Define all 6 modules in parent POM: shared/models, shared/spi, alert-integrator, verification-engine, decision-engine, action-executor
+- [x] [R1] 1.3 Configure dependencyManagement with versions: Spring Boot 3.3.x, AWS SDK v2, Drools/KIE, Testcontainers, JaCoCo
+- [x] [R1] 1.4 Configure pluginManagement: maven-compiler-plugin (Java 21), maven-surefire-plugin, JaCoCo (70% general gate)
 - [ ] [R1] 1.5 Verify `mvn clean package` builds all modules in topological order from parent directory
 
 ## 2. Shared Models
 
-- [ ] [R1] 2.1 Create `shared/shared-models` module with package `com.company.rotations.models`
-- [ ] [R1] 2.2 Implement `Alert` entity with JPA annotations (id, providerName, credentialType, tenantId, status, payload, rawPayload, receivedAt, state)
-- [ ] [R1] 2.3 Implement `AlertType` enum (AWS_ACCESS_KEY, IAM_USER, RDS_CREDENTIAL, GENERIC)
-- [ ] [R1] 2.4 Implement `AlertStatus` enum (PENDING, PROCESSING, VERIFIED, DECIDED, ROTATING, COMPLETED, FAILED, IN_DLQ)
-- [ ] [R1] 2.5 Implement `VerificationResult` entity (alertId, verified, reason, severityScope, blastRadius, credentialType, tenantId, provider, timestamp)
-- [ ] [R1] 2.6 Implement `DecisionOutput` model (alertId, decision: rotate/no_action/escalate, severity, reason, playbookName)
-- [ ] [R1] 2.7 Implement `RotationAction` entity (alertId, credentialType, status: PENDING/ROTATING/SUCCESS/FAIL/ESCALATE, provider, attempts, timeout, createdAt, updatedAt)
-- [ ] [R1] 2.8 Implement `AuditEvent` entity (eventType, tenantId, alertId, timestamp, details: JSONB, userId)
-- [ ] [R1] 2.9 Implement `AuditEventType` enum (ALERT_INGESTED, ALERT_DEDUPLICATED, CREDENTIAL_VERIFIED, CREDENTIAL_EXPIRED, ROTATION_STARTED, ROTATION_COMPLETED, ROTATION_FAILED, ESCALATION_TRIGGERED, CREDENTIAL_ACCESSED)
-- [ ] [R1] 2.10 Implement `GenericAlertModel` with all fields: eventId, source, sourceEventId, detectedSecret(type, valueHash, pattern), context(repository, file, commit, line, visibility, foundAt), providerSeverity, detectorState(isNew, previouslyFlagged, flagCount), receivedAt, rawPayload
-- [ ] [R1] 2.11 Write unit tests for all models (serialization/deserialization, enum values, toString masking for sensitive fields)
+- [x] [R1] 2.1 Create `shared/shared-models` module with package `com.company.rotations.models`
+- [x] [R1] 2.2 Implement `Alert` entity with JPA annotations (id, providerName, credentialType, tenantId, status, payload, rawPayload, receivedAt, state)
+- [x] [R1] 2.3 Implement `AlertType` enum (AWS_ACCESS_KEY, IAM_USER, RDS_CREDENTIAL, GENERIC)
+- [x] [R1] 2.4 Implement `AlertStatus` enum (PENDING, PROCESSING, VERIFIED, DECIDED, ROTATING, COMPLETED, FAILED, IN_DLQ)
+- [x] [R1] 2.5 Implement `VerificationResult` entity (alertId, verified, reason, severityScope, blastRadius, credentialType, tenantId, provider, timestamp)
+- [x] [R1] 2.6 Implement `DecisionOutput` model (alertId, decision: rotate/no_action/escalate, severity, reason, playbookName)
+- [x] [R1] 2.7 Implement `RotationAction` entity (alertId, credentialType, status: PENDING/ROTATING/SUCCESS/FAIL/ESCALATE, provider, attempts, timeout, createdAt, updatedAt)
+- [x] [R1] 2.8 Implement `AuditEvent` entity (eventType, tenantId, alertId, timestamp, details: JSONB, userId)
+- [x] [R1] 2.9 Implement `AuditEventType` enum (ALERT_INGESTED, ALERT_DEDUPLICATED, CREDENTIAL_VERIFIED, CREDENTIAL_EXPIRED, ROTATION_STARTED, ROTATION_COMPLETED, ROTATION_FAILED, ESCALATION_TRIGGERED, CREDENTIAL_ACCESSED)
+- [x] [R1] 2.10 Implement `GenericAlertModel` with all fields: eventId, source, sourceEventId, detectedSecret(type, valueHash, pattern), context(repository, file, commit, line, visibility, foundAt), providerSeverity, detectorState(isNew, previouslyFlagged, flagCount), receivedAt, rawPayload
+- [x] [R1] 2.11 Write unit tests for all models (serialization/deserialization, enum values, toString masking for sensitive fields)
 
 ## 3. Shared SPIs
 
-- [ ] [R1] 3.1 Create `shared/shared-spi` module with package `com.company.rotations.spi`
-- [ ] [R1] 3.2 Implement `AlertAdapter` interface with version `1.0.0`: `GenericAlertModel toGenericAlert(Map<String, Object> rawPayload)`, `String getProviderName()`
-- [ ] [R1] 3.3 Implement `VerificationProvider` interface with version `1.0.0`: `VerificationResult verify(String credentialType, Map<String, String> credentials, String tenantId)`
-- [ ] [R1] 3.4 Implement `PlaybookManager` interface with version `1.0.0`: `Playbook loadPlaybook(String credentialType)`, `List<String> getPlaybookSteps(String credentialType)`
-- [ ] [R1] 3.5 Implement `RotationService` interface with version `1.0.0`: `RotationAction rotate(String credentialType, Map<String, String> credentials, String tenantId)`
-- [ ] [R1] 3.6 Implement `NotificationChannel` interface with version `1.0.0`: `void send(String message, Map<String, String> context)`
-- [ ] [R1] 3.7 Configure SPI module version as `1.0.0` in its POM
-- [ ] [R1] 3.8 Write unit tests for SPI interface contract validation (each interface has all required methods)
+- [x] [R1] 3.1 Create `shared/shared-spi` module with package `com.company.rotations.spi`
+- [x] [R1] 3.2 Implement `AlertAdapter` interface with version `1.0.0`: `GenericAlertModel toGenericAlert(Map<String, Object> rawPayload)`, `String getProviderName()`
+- [x] [R1] 3.3 Implement `VerificationProvider` interface with version `1.0.0`: `VerificationResult verify(String credentialType, Map<String, String> credentials, String tenantId)`
+- [x] [R1] 3.4 Implement `PlaybookManager` interface with version `1.0.0`: `Playbook loadPlaybook(String credentialType)`, `List<String> getPlaybookSteps(String credentialType)`
+- [x] [R1] 3.5 Implement `RotationService` interface with version `1.0.0`: `RotationAction rotate(String credentialType, Map<String, String> credentials, String tenantId)`
+- [x] [R1] 3.6 Implement `NotificationChannel` interface with version `1.0.0`: `void send(String message, Map<String, String> context)`
+- [x] [R1] 3.7 Configure SPI module version as `1.0.0` in its POM
+- [x] [R1] 3.8 Write unit tests for SPI interface contract validation (each interface has all required methods)
 
 ## 4. Alert Integrator Module
 
