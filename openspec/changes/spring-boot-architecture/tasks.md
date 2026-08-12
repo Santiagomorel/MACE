@@ -138,16 +138,16 @@
 
 ## 10. Cross-Cutting Concerns
 
-- [ ] [R1] 10.1 Create `@ControllerAdvice` with `@ExceptionHandler` for global error handling
-- [ ] [R1] 10.2 Implement `ErrorResponse` model (timestamp, status, error, path, message, details)
-- [ ] [R1] 10.3 Implement `TechnicalExceptionHandler` returning HTTP 500 without stack traces
-- [ ] [R1] 10.4 Implement `BadRequestExceptionHandler` returning HTTP 400 with validation details
-- [ ] [R1] 10.5 Implement URL versioning: all API endpoints under `/api/v1/`
-- [ ] [R1] 10.6 Implement `ApiKeyInterceptor` for `/api/v1/admin/*` endpoints (X-API-Key header)
-- [ ] [R1] 10.7 Implement CORS configuration: `*` allowed in dev, restricted origins in prod
-- [ ] [R1] 10.8 Implement Bean Validation on request bodies (@Valid, @NotBlank, @EnumValue)
-- [ ] [R1] 10.9 Create `GlobalExceptionHandler` unit tests (business error, technical error, validation error)
-- [ ] [R1] 10.10 Create `ApiKeyInterceptor` unit tests (valid key, missing key, invalid key)
+- [x] [R1] 10.1 Create `@ControllerAdvice` with `@ExceptionHandler` for global error handling
+- [x] [R1] 10.2 Implement `ErrorResponse` model (timestamp, status, error, path, message, details)
+- [x] [R1] 10.3 Implement `TechnicalExceptionHandler` returning HTTP 500 without stack traces
+- [x] [R1] 10.4 Implement `BadRequestExceptionHandler` returning HTTP 400 with validation details
+- [x] [R1] 10.5 Implement URL versioning: all API endpoints under `/api/v1/`
+- [x] [R1] 10.6 Implement `ApiKeyInterceptor` for `/api/v1/admin/*` endpoints (X-API-Key header)
+- [x] [R1] 10.7 Implement CORS configuration: `*` allowed in dev, restricted origins in prod
+- [x] [R1] 10.8 Implement Bean Validation on request bodies (@Valid, @NotBlank, @EnumValue)
+- [x] [R1] 10.9 Create `GlobalExceptionHandler` unit tests (business error, technical error, validation error)
+- [x] [R1] 10.10 Create `ApiKeyInterceptor` unit tests (valid key, missing key, invalid key)
 
 ## 11. Environment Profiles
 
