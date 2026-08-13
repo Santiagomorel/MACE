@@ -46,7 +46,7 @@ class GenericAlertModelTest {
         assertEquals("gitguardian", model.getSource());
         assertEquals("sg-1", model.getSourceEventId());
         assertEquals("high", model.getProviderSeverity());
-        assertEquals("aws_access_key", model.getValueHash());
+        assertEquals("abc123", model.getValueHash());
         assertEquals("my-repo", model.getContext().getRepository());
         assertEquals(42, model.getContext().getLine().intValue());
         assertTrue(model.getDetectorState().isNew());

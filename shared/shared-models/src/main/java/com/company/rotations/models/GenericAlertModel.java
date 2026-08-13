@@ -48,6 +48,16 @@ public class GenericAlertModel {
         return detectedSecret != null ? detectedSecret.getValueHash() : null;
     }
 
+    @JsonProperty("value_hash")
+    public void setValueHash(String valueHash) {
+        if (valueHash != null) {
+            if (this.detectedSecret == null) {
+                this.detectedSecret = new DetectedSecret();
+            }
+            this.detectedSecret.setValueHash(valueHash);
+        }
+    }
+
     public static class DetectedSecret {
         private String type;
         private String valueHash;

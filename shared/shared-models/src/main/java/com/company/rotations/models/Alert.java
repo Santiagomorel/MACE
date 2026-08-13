@@ -44,7 +44,7 @@ public class Alert {
     private String rawPayload;
 
     @Column(name = "received_at", nullable = false)
-    private Instant receivedAt;
+    private Instant receivedAt = Instant.now();
 
     @Enumerated(EnumType.STRING)
     @Column(name = "state")
