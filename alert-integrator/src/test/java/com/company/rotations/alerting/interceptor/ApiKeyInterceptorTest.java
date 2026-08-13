@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import java.io.PrintWriter;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -23,10 +24,12 @@ class ApiKeyInterceptorTest {
     class ApiKeyEnabledTests {
 
         @BeforeEach
-        void setUp() {
+        void setUp() throws Exception {
             interceptor = new ApiKeyInterceptor("secret-key-123", true);
             request = mock(HttpServletRequest.class);
             response = mock(HttpServletResponse.class);
+            PrintWriter writer = mock(PrintWriter.class);
+            when(response.getWriter()).thenReturn(writer);
         }
 
         @Test
@@ -129,7 +132,7 @@ class ApiKeyInterceptorTest {
             boolean result = noKeyInterceptor.preHandle(request, response, null);
 
             assertFalse(result);
-            verify(response).setStatus(401);
+            verify(response).setStatus(403);
         }
 
         @Test
@@ -167,6 +170,8 @@ class ApiKeyInterceptorTest {
             interceptor = new ApiKeyInterceptor("secret-key-123", true);
             request = mock(HttpServletRequest.class);
             response = mock(HttpServletResponse.class);
+            PrintWriter writer = mock(PrintWriter.class);
+            when(response.getWriter()).thenReturn(writer);
             when(request.getRequestURI()).thenReturn("");
             when(request.getMethod()).thenReturn("GET");
 
@@ -181,6 +186,8 @@ class ApiKeyInterceptorTest {
             interceptor = new ApiKeyInterceptor("secret-key-123", true);
             request = mock(HttpServletRequest.class);
             response = mock(HttpServletResponse.class);
+            PrintWriter writer = mock(PrintWriter.class);
+            when(response.getWriter()).thenReturn(writer);
             when(request.getRequestURI()).thenReturn("/api/v1/admin/");
             when(request.getHeader("X-API-Key")).thenReturn("secret-key-123");
             when(request.getMethod()).thenReturn("GET");

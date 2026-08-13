@@ -100,7 +100,7 @@ class GlobalExceptionHandlerTest {
             BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "alertRequest");
             bindingResult.addError(new FieldError("alertRequest", "providerName", "must not be blank"));
             bindingResult.addError(new FieldError("alertRequest", "tenantId", "must not be blank"));
-            MethodArgumentNotValidException exception = new MethodArgumentNotValidException(null, bindingResult.getFieldErrors());
+            MethodArgumentNotValidException exception = new MethodArgumentNotValidException(null, bindingResult);
 
             ResponseEntity<ErrorResponse> response = handler.handleValidationMethodException(exception, request);
 
@@ -114,7 +114,7 @@ class GlobalExceptionHandlerTest {
         @DisplayName("Should return 400 with no field errors")
         void shouldReturn400WithNoFieldErrors() {
             BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "alertRequest");
-            MethodArgumentNotValidException exception = new MethodArgumentNotValidException(null, bindingResult.getFieldErrors());
+            MethodArgumentNotValidException exception = new MethodArgumentNotValidException(null, bindingResult);
 
             ResponseEntity<ErrorResponse> response = handler.handleValidationMethodException(exception, request);
 

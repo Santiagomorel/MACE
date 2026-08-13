@@ -2,6 +2,7 @@ package com.company.rotations.logging.service;
 
 import com.company.rotations.logging.model.AuditEvent;
 import com.company.rotations.logging.repository.AuditEventRepository;
+import com.company.rotations.models.GenericAlertModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -61,6 +62,72 @@ public class AuditService {
     public void logDedupHit(Map<String, Object> eventData) {
         logAudit(AuditEvent.AuditEventType.DEDUP_HIT,
                  AuditEvent.AuditSeverity.WARN, null, null, eventData);
+    }
+
+    public void logWebhookReceived(String source, Map<String, Object> eventData) {
+        Map<String, Object> enriched = new java.util.HashMap<>(eventData);
+        enriched.put("source", source);
+        logWebhookReceived(enriched);
+    }
+
+    public void logAlertIngested(String source, GenericAlertModel alert, String requestId) {
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("source", source);
+        data.put("event_id", alert.getEventId());
+        data.put("source_event_id", alert.getSourceEventId());
+        data.put("secret_type", alert.getDetectedSecret() != null ? alert.getDetectedSecret().getType() : "unknown");
+        data.put("repository", alert.getContext() != null ? alert.getContext().getRepository() : null);
+        logAudit(AuditEvent.AuditEventType.ALERT_INGESTED,
+                 AuditEvent.AuditSeverity.INFO, "SUCCESS", "ingestion", data);
+    }
+
+    public void logAlertDeduplicated(String source, String sourceEventId, String reason) {
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("source", source);
+        data.put("source_event_id", sourceEventId);
+        data.put("dedup_reason", reason);
+        logAudit(AuditEvent.AuditEventType.ALERT_DEDUPLICATED,
+                 AuditEvent.AuditSeverity.WARN, null, "dedup", data);
+    }
+
+    public void logSignatureVerificationFailed(String source, String signature) {
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("source", source);
+        data.put("signature_present", signature != null && !signature.isBlank());
+        logAudit(AuditEvent.AuditEventType.SIGNATURE_VERIFICATION_FAILED,
+                 AuditEvent.AuditSeverity.ERROR, "FAILURE", "auth", data);
+    }
+
+    public void logIpVerificationFailed(String source, String clientIp) {
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("source", source);
+        data.put("client_ip", clientIp);
+        logAudit(AuditEvent.AuditEventType.IP_VERIFICATION_FAILED,
+                 AuditEvent.AuditSeverity.ERROR, "BLOCKED", "auth", data);
+    }
+
+    public void logProcessingStarted(String source, String alertId) {
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("source", source);
+        data.put("alert_id", alertId);
+        logAudit(AuditEvent.AuditEventType.PROCESSING_STARTED,
+                 AuditEvent.AuditSeverity.INFO, null, "worker", data);
+    }
+
+    public void logProcessingCompleted(String source, String alertId) {
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("source", source);
+        data.put("alert_id", alertId);
+        logAudit(AuditEvent.AuditEventType.PROCESSING_COMPLETED,
+                 AuditEvent.AuditSeverity.INFO, "SUCCESS", "worker", data);
+    }
+
+    public void logProcessingFailed(String source, Map<String, Object> eventData, String errorMessage) {
+        Map<String, Object> data = new java.util.HashMap<>(eventData);
+        data.put("source", source);
+        data.put("error_message", errorMessage);
+        logAudit(AuditEvent.AuditEventType.PROCESSING_FAILED,
+                 AuditEvent.AuditSeverity.ERROR, "FAILURE", "worker", data);
     }
 
     private void logAudit(AuditEvent.AuditEventType eventType,

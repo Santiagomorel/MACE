@@ -21,7 +21,7 @@
     <modules>
         <module>shared/shared-models</module>
         <module>shared/shared-spi</module>
-        <!-- <module>alert-integrator</module> -->
+        <module>alert-integrator</module>
         <module>logging</module>
         <!-- <module>verification-engine</module>
         <module>decision-engine</module>
@@ -55,6 +55,11 @@
             <dependency>
                 <groupId>com.company</groupId>
                 <artifactId>shared-spi</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.company</groupId>
+                <artifactId>logging</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

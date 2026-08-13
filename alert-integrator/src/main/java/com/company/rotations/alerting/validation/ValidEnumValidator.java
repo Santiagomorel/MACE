@@ -8,8 +8,8 @@ import java.util.Arrays;
 
 public class ValidEnumValidator implements ConstraintValidator<ValidEnum, String> {
 
-    private final String enumClassName;
-    private final boolean ignoreCase;
+    private String enumClassName;
+    private boolean ignoreCase;
 
     @Override
     public void initialize(ValidEnum annotation) {

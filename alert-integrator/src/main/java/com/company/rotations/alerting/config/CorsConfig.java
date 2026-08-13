@@ -18,8 +18,14 @@ public class CorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        String[] origins;
+        if (allowedOrigins.isEmpty()) {
+            origins = new String[]{"*"};
+        } else {
+            origins = allowedOrigins.split(",");
+        }
         registry.addMapping("/api/**")
-            .allowedOriginPatterns(allowedOrigins.isEmpty() ? "*" : allowedOrigins.split(","))
+            .allowedOriginPatterns(origins)
             .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
             .allowedHeaders("*")
             .exposedHeaders("X-Total-Count", "X-Page-Size")
