@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <property name="LOG_PATTERN" value="{"timestamp":"%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}","level":"%level","logger":"%logger{36}","message":"%msg","trace_id":"%X{trace_id:-}","alert_id":"%X{alert_id:-}","client_id":"%X{client_id:-}","phase":"%X{phase:-}","step":"%X{step:-}","duration_ms":"%X{duration_ms:-}","status":"%X{status:-}"}%n"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp/>
+                <pattern>
+                    <pattern>
+                        {
+                            "level": "%level",
+                            "logger": "%logger",
+                            "message": "%msg",
+                            "trace_id": "%X{trace_id}",
+                            "alert_id": "%X{alert_id}",
+                            "client_id": "%X{client_id}",
+                            "phase": "%X{phase}",
+                            "step": "%X{step}",
+                            "duration_ms": "%X{duration_ms}",
+                            "status": "%X{status}"
+                        }
+                    </pattern>
+                </pattern>
+                <stackTrace/>
+            </providers>
+            <customFields>{"application":"rotation-system"}</customFields>
+        </encoder>
+    </appender>
+
+    <appender name="ASYNC_CONSOLE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <includeCallerData>false</includeCallerData>
+        <appender-ref ref="CONSOLE"/>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH:-./logs}/application.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH:-./logs}/application.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp/>
+                <pattern>
+                    <pattern>
+                        {
+                            "level": "%level",
+                            "logger": "%logger",
+                            "message": "%msg",
+                            "trace_id": "%X{trace_id}",
+                            "alert_id": "%X{alert_id}",
+                            "client_id": "%X{client_id}",
+                            "phase": "%X{phase}",
+                            "step": "%X{step}",
+                            "duration_ms": "%X{duration_ms}",
+                            "status": "%X{status}"
+                        }
+                    </pattern>
+                </pattern>
+                <stackTrace/>
+            </providers>
+            <customFields>{"application":"rotation-system"}</customFields>
+        </encoder>
+    </appender>
+
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <includeCallerData>false</includeCallerData>
+        <appender-ref ref="FILE"/>
+    </appender>
+
+    <appender name="AUDIT" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH:-./logs}/audit.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH:-./logs}/audit.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
+        </rollingPolicy>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>AUDIT</level>
+        </filter>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp/>
+                <pattern>
+                    <pattern>
+                        {
+                            "level": "%level",
+                            "logger": "%logger",
+                            "message": "%msg",
+                            "trace_id": "%X{trace_id}",
+                            "alert_id": "%X{alert_id}",
+                            "client_id": "%X{client_id}",
+                            "phase": "%X{phase}",
+                            "step": "%X{step}",
+                            "duration_ms": "%X{duration_ms}",
+                            "status": "%X{status}"
+                        }
+                    </pattern>
+                </pattern>
+                <stackTrace/>
+            </providers>
+            <customFields>{"application":"rotation-system"}</customFields>
+        </encoder>
+    </appender>
+
+    <appender name="ASYNC_AUDIT" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>256</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <includeCallerData>false</includeCallerData>
+        <appender-ref ref="AUDIT"/>
+    </appender>
+
+    <springProfile name="dev">
+        <root level="INFO">
+            <appender-ref ref="ASYNC_CONSOLE"/>
+        </root>
+        <logger name="com.company.rotations.logging" level="DEBUG" additivity="false">
+            <appender-ref ref="ASYNC_CONSOLE"/>
+        </logger>
+    </springProfile>
+
+    <springProfile name="staging">
+        <root level="INFO">
+            <appender-ref ref="ASYNC_CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE"/>
+        </root>
+        <logger name="com.company.rotations.logging" level="INFO" additivity="false">
+            <appender-ref ref="ASYNC_FILE"/>
+        </logger>
+    </springProfile>
+
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="ASYNC_FILE"/>
+            <appender-ref ref="ASYNC_AUDIT"/>
+        </root>
+        <logger name="com.company.rotations.logging" level="INFO" additivity="false">
+            <appender-ref ref="ASYNC_FILE"/>
+            <appender-ref ref="ASYNC_AUDIT"/>
+        </logger>
+    </springProfile>
+
+    <springProfile name="!dev &amp; !staging &amp; !prod">
+        <root level="INFO">
+            <appender-ref ref="ASYNC_CONSOLE"/>
+        </root>
+    </springProfile>
+</configuration>

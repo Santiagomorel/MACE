@@ -1,0 +1,76 @@
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+logging:
+  level:
+    com.company.rotations.logging: DEBUG
+    org.springframework.web: INFO
+    org.springframework.security: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,env,conditions
+  endpoint:
+    health:
+      show-details: always
+
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+logging:
+  level:
+    com.company.rotations.logging: INFO
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+
+app:
+  logging:
+    audit-retention-days: 90
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+logging:
+  level:
+    com.company.rotations.logging: INFO
+    org.springframework.web: ERROR
+    org.springframework.security: WARN
+
+app:
+  logging:
+    audit-retention-days: 90
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    distribution:
+      percentiles-histogram:
+        app.pipeline.duration: true
+      slo:
+        app.pipeline.duration: 50ms,100ms,250ms,500ms,1000ms

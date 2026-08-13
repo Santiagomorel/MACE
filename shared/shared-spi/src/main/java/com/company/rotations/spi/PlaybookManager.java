@@ -12,4 +12,10 @@ public interface PlaybookManager {
     default String getVersion() {
         return VERSION;
     }
+
+    interface Playbook {
+        String getName();
+        List<String> getSteps();
+        String getCondition();
+    }
 }

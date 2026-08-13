@@ -14,7 +14,7 @@ class PlaybookManagerTest {
         boolean found = false;
         for (Method m : methods) {
             if (m.getName().equals("loadPlaybook") &&
-                m.getReturnType() == Playbook.class &&
+                m.getReturnType() == PlaybookManager.Playbook.class &&
                 m.getParameterCount() == 1 &&
                 m.getParameterTypes()[0] == String.class) {
                 found = true;

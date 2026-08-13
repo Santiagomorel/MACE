@@ -20,9 +20,10 @@
 
     <modules>
         <module>shared/shared-models</module>
-        <!-- <module>shared/shared-spi</module>
-        <module>alert-integrator</module>
-        <module>verification-engine</module>
+        <module>shared/shared-spi</module>
+        <!-- <module>alert-integrator</module> -->
+        <module>logging</module>
+        <!-- <module>verification-engine</module>
         <module>decision-engine</module>
         <module>action-executor</module> -->
     </modules>
