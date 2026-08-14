@@ -1,5 +1,6 @@
 package com.company.rotations.decision.service;
 
+import com.company.rotations.logging.service.AuditService;
 import com.company.rotations.decision.domain.CriticalityResult;
 import com.company.rotations.decision.domain.Playbook;
 import com.company.rotations.models.Severidad;
@@ -15,14 +16,17 @@ public class CriticalityCalculator {
     private static final Logger log = LoggerFactory.getLogger(CriticalityCalculator.class);
 
     private final PlaybookLoaderService playbookLoaderService;
+    private final AuditService auditService;
 
-    public CriticalityCalculator(PlaybookLoaderService playbookLoaderService) {
+    public CriticalityCalculator(PlaybookLoaderService playbookLoaderService,
+                                  AuditService auditService) {
         this.playbookLoaderService = playbookLoaderService;
+        this.auditService = auditService;
     }
 
     public CriticalityResult calculateCriticality(String tenantId, String credentialType,
-                                                   Map<String, Object> actionMatrix,
-                                                   Map<String, Object> metadata) {
+                                                    Map<String, Object> actionMatrix,
+                                                    Map<String, Object> metadata) {
         Playbook playbook = playbookLoaderService.loadPlaybook(credentialType);
         if (playbook == null) {
             log.warn("No playbook found for credential type {}", credentialType);
@@ -45,6 +49,21 @@ public class CriticalityCalculator {
 
         log.info("Criticality calculated: {} for tenant {} (playbookFloor={}, clientRules={})",
                 finalCriticality, tenantId, playbookFloor, clientRules);
+
+        try {
+            auditService.logRuleEvaluated(Map.of(
+                    "tenant_id", tenantId,
+                    "credential_type", credentialType,
+                    "playbook_id", playbook.getPlaybookId(),
+                    "playbook_floor", playbookFloor.name(),
+                    "client_rules", clientRules.name(),
+                    "calculated_severity", finalCriticality.name(),
+                    "calculated_via", "max(playbook_floor, client_rules)",
+                    "rationale", rationale
+            ));
+        } catch (Exception e) {
+            log.warn("Could not log criticality calculation audit: {}", e.getMessage());
+        }
 
         return new CriticalityResult(
                 finalCriticality,

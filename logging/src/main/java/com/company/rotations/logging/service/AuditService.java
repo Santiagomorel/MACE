@@ -13,7 +13,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-@Service
 public class AuditService {
 
     private static final Logger log = LoggerFactory.getLogger(AuditService.class);

@@ -67,6 +67,18 @@ public class DeadLetterQueueService {
             }
             logger.info("Alert sent to DLQ: source={}, error={}, retryCount={}",
                     source, ex.getMessage(), entry.getRetryCount());
+
+            try {
+                Map<String, Object> dlqEventData = new java.util.HashMap<>();
+                dlqEventData.put("source", source);
+                dlqEventData.put("source_event_id", sourceEventId);
+                dlqEventData.put("alert_type", alertType);
+                dlqEventData.put("error_message", ex.getMessage());
+                dlqEventData.put("retry_count", entry.getRetryCount());
+                auditService.logDlqEnqueued(dlqEventData);
+            } catch (Exception e) {
+                logger.warn("Could not log DLQ audit event: {}", e.getMessage());
+            }
         } catch (Exception e) {
             logger.error("Failed to save DLQ entry: {}", e.getMessage());
         }

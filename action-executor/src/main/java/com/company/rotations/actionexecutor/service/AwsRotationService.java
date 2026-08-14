@@ -4,6 +4,7 @@ import com.company.rotations.actionexecutor.audit.RotationTransitionDto;
 import com.company.rotations.actionexecutor.domain.RotationResult;
 import com.company.rotations.actionexecutor.domain.RotationStateMachine;
 import com.company.rotations.actionexecutor.domain.RotationState;
+import com.company.rotations.logging.service.AuditService;
 import com.company.rotations.models.Credential;
 import com.company.rotations.models.Severidad;
 import org.slf4j.Logger;
@@ -37,13 +38,16 @@ public class AwsRotationService {
     private final IamClient iamClient;
     private final VaultService vaultService;
     private final AuditTrailService auditTrailService;
+    private final AuditService auditService;
 
     public AwsRotationService(StsClient stsClient, IamClient iamClient,
-                              VaultService vaultService, AuditTrailService auditTrailService) {
+                              VaultService vaultService, AuditTrailService auditTrailService,
+                              AuditService auditService) {
         this.stsClient = stsClient;
         this.iamClient = iamClient;
         this.vaultService = vaultService;
         this.auditTrailService = auditTrailService;
+        this.auditService = auditService;
     }
 
     public RotationResult executeRotation(Credential credential, String tenantId,
@@ -93,6 +97,19 @@ public class AwsRotationService {
             auditTrailService.logEscalation(tenantId, credential.getId(), severity,
                     result.getErrorMessage(), MAX_RETRIES);
 
+            try {
+                auditService.logActionExecuted(Map.of(
+                        "alert_id", credential.getId().toString(),
+                        "tenant_id", tenantId,
+                        "credential_id", credential.getKeyId(),
+                        "success", false,
+                        "message", result.getErrorMessage(),
+                        "attempts", MAX_RETRIES
+                ));
+            } catch (Exception e) {
+                log.warn("Could not log action executed audit: {}", e.getMessage());
+            }
+
             return result;
 
         } catch (InterruptedException e) {
@@ -104,6 +121,18 @@ public class AwsRotationService {
             stateMachine.timeoutTransition();
             auditTrailService.logTimeout(tenantId, credential.getId(), severity);
 
+            try {
+                auditService.logActionExecuted(Map.of(
+                        "alert_id", credential.getId().toString(),
+                        "tenant_id", tenantId,
+                        "credential_id", credential.getKeyId(),
+                        "success", false,
+                        "message", "Rotation interrupted"
+                ));
+            } catch (Exception ex) {
+                log.warn("Could not log action executed audit: {}", ex.getMessage());
+            }
+
             return result;
         } catch (Exception e) {
             result.setSuccess(false);
@@ -114,6 +143,18 @@ public class AwsRotationService {
                     "Unexpected error during rotation", e.getMessage());
             auditTrailService.logRotationTransition(stateMachine.getTransitionLog().get(
                     stateMachine.getTransitionLog().size() - 1));
+
+            try {
+                auditService.logActionExecuted(Map.of(
+                        "alert_id", credential.getId().toString(),
+                        "tenant_id", tenantId,
+                        "credential_id", credential.getKeyId(),
+                        "success", false,
+                        "message", result.getErrorMessage()
+                ));
+            } catch (Exception ex) {
+                log.warn("Could not log action executed audit: {}", ex.getMessage());
+            }
 
             return result;
         }
@@ -157,6 +198,19 @@ public class AwsRotationService {
 
         auditTrailService.logRotationCompleted(tenantId, credential.getId(), result);
         log.info("Rotation completed for tenant {}: {}", tenantId, result.getNewKeyId());
+
+        try {
+            auditService.logActionExecuted(Map.of(
+                    "alert_id", credential.getId().toString(),
+                    "tenant_id", tenantId,
+                    "credential_id", credential.getKeyId(),
+                    "new_key_id", newKeyId,
+                    "success", true,
+                    "message", result.getMessage()
+            ));
+        } catch (Exception e) {
+            log.warn("Could not log action executed audit: {}", e.getMessage());
+        }
 
         return result;
     }

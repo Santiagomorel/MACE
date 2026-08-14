@@ -4,8 +4,9 @@ import com.company.rotations.actionexecutor.audit.RotationTransitionDto;
 import com.company.rotations.actionexecutor.domain.RotationResult;
 import com.company.rotations.actionexecutor.domain.RotationStateMachine;
 import com.company.rotations.actionexecutor.domain.RotationState;
-import com.company.rotations.actionexecutor.strategy.NotificationStrategy;
+import com.company.rotations.logging.service.AuditService;
 import com.company.rotations.actionexecutor.strategy.NotificationDispatcherStrategy;
+import com.company.rotations.actionexecutor.strategy.NotificationStrategy;
 import com.company.rotations.models.Severidad;
 import com.company.rotations.models.Credential;
 import org.slf4j.Logger;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -25,13 +27,16 @@ public class ActionExecutorServiceImpl implements ActionExecutor {
     private final AwsRotationService awsRotationService;
     private final NotificationDispatcherStrategy notificationDispatcher;
     private final AuditTrailService auditTrailService;
+    private final AuditService auditService;
 
     public ActionExecutorServiceImpl(AwsRotationService awsRotationService,
                                       NotificationDispatcherStrategy notificationDispatcher,
-                                      AuditTrailService auditTrailService) {
+                                      AuditTrailService auditTrailService,
+                                      AuditService auditService) {
         this.awsRotationService = awsRotationService;
         this.notificationDispatcher = notificationDispatcher;
         this.auditTrailService = auditTrailService;
+        this.auditService = auditService;
     }
 
     @Override
@@ -39,6 +44,20 @@ public class ActionExecutorServiceImpl implements ActionExecutor {
                                                   Severidad severity, UUID alertId) {
         log.info("Starting action execution pipeline for alert {} tenant {} severity {}",
                 alertId, tenantId, severity);
+
+        Map<String, Object> actionEventData = Map.of(
+                "alert_id", alertId.toString(),
+                "tenant_id", tenantId,
+                "severity", severity.name(),
+                "credential_id", credential.getKeyId(),
+                "credential_type", credential.getCredentialType() != null ? credential.getCredentialType() : "unknown"
+        );
+
+        try {
+            auditService.logActionExecuted(actionEventData);
+        } catch (Exception e) {
+            log.warn("Could not log action executed audit: {}", e.getMessage());
+        }
 
         RotationStateMachine stateMachine = new RotationStateMachine(
                 UUID.randomUUID().toString(), alertId
@@ -54,6 +73,20 @@ public class ActionExecutorServiceImpl implements ActionExecutor {
                     result.getErrorMessage(), 3);
         }
 
+        try {
+            auditService.logActionExecuted(Map.of(
+                    "alert_id", alertId.toString(),
+                    "tenant_id", tenantId,
+                    "severity", severity.name(),
+                    "credential_id", credential.getKeyId(),
+                    "success", result.isSuccess(),
+                    "escalated", result.isEscalated(),
+                    "message", result.getErrorMessage()
+            ));
+        } catch (Exception e) {
+            log.warn("Could not log action completed audit: {}", e.getMessage());
+        }
+
         log.info("Action execution pipeline completed for alert {}: success={}, escalated={}",
                 alertId, result.isSuccess(), result.isEscalated());
 
@@ -62,10 +95,10 @@ public class ActionExecutorServiceImpl implements ActionExecutor {
 
     @Override
     public List<NotificationStrategy.NotificationResult> sendNotifications(String tenantId,
-                                                                             UUID alertId,
-                                                                             Severidad severity,
-                                                                             String credentialId,
-                                                                             List<String> notificationProfile) {
+                                                                              UUID alertId,
+                                                                              Severidad severity,
+                                                                              String credentialId,
+                                                                              List<String> notificationProfile) {
         return notificationDispatcher.dispatchNotifications(
                 tenantId, alertId, severity, credentialId, notificationProfile
         );

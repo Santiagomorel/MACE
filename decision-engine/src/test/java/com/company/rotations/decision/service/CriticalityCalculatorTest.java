@@ -1,22 +1,31 @@
 package com.company.rotations.decision.service;
 
+import com.company.rotations.logging.service.AuditService;
 import com.company.rotations.models.Severidad;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
+@ExtendWith(MockitoExtension.class)
 class CriticalityCalculatorTest {
 
     private CriticalityCalculator calculator;
     private PlaybookLoaderService playbookLoaderService;
 
+    @Mock
+    private AuditService auditService;
+
     @BeforeEach
     void setUp() {
         playbookLoaderService = new PlaybookLoaderService(null);
-        calculator = new CriticalityCalculator(playbookLoaderService);
+        calculator = new CriticalityCalculator(playbookLoaderService, auditService);
     }
 
     @Test

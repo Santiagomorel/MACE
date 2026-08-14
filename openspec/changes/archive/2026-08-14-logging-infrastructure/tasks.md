@@ -81,12 +81,12 @@
 
 ## 9. Integration with Other Modules
 
-- [ ] [R2] 9.1 Update alert-integrator tasks: inject `AuditService` for webhook and dedup audit events
-- [ ] [R2] 9.2 Update verifier tasks: inject `AuditService` for verification audit events
-- [ ] [R2] 9.3 Update decision-engine tasks: inject `AuditService` for rule evaluation audit events
-- [ ] [R2] 9.4 Update action-executor tasks: inject `AuditService` for action audit events
+- [x] [R2] 9.1 Update alert-integrator tasks: inject `AuditService` for webhook and dedup audit events
+- [x] [R2] 9.2 Update verifier tasks: inject `AuditService` for verification audit events
+- [x] [R2] 9.3 Update decision-engine tasks: inject `AuditService` for rule evaluation audit events
+- [x] [R2] 9.4 Update action-executor tasks: inject `AuditService` for action audit events
 - [x] [R2] 9.5 Set `phase` MDC field in each module via `AuditService.log*()` methods
-- [ ] [R2] 9.6 Verify audit trail is complete for a full pipeline flow (webhook → verify → decision → action)
+- [x] [R2] 9.6 Verify audit trail is complete for a full pipeline flow (webhook → verify → decision → action)
 
 ## 10. Testing
 
@@ -94,9 +94,9 @@
 - [x] [R2] 10.2 Write unit tests for secret redaction (all secret patterns)
 - [x] [R2] 10.3 Write unit tests for audit service (all event types, error handling)
 - [x] [R2] 10.4 Write unit tests for audit purge (correct retention period)
-- [ ] [R2] 10.5 Write integration test: full audit trail for a synthetic alert through all 4 phases
-- [ ] [R2] 10.6 Write integration test: verify JSON log format includes all MDC fields
-- [ ] [R2] 10.7 Write integration test: verify secret redaction in log output
+- [x] [R2] 10.5 Write integration test: full audit trail for a synthetic alert through all 4 phases
+- [x] [R2] 10.6 Write integration test: verify JSON log format includes all MDC fields
+- [x] [R2] 10.7 Write integration test: verify secret redaction in log output
 
 ## 11. Configuration
 

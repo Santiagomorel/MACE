@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testlogging;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+        use_sql_comments: true
+  main:
+    banner-mode: off
+
+logging:
+  level:
+    root: INFO
+    com.company.rotations.logging: DEBUG
+
+app:
+  logging:
+    audit-retention-days: 90

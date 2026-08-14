@@ -1,5 +1,6 @@
 package com.company.rotations.verification.service;
 
+import com.company.rotations.logging.service.AuditService;
 import com.company.rotations.verification.adapter.AlertInputAdapter;
 import com.company.rotations.verification.account.mapper.AccountMapper;
 import com.company.rotations.verification.cache.VerificationCacheService;
@@ -43,6 +44,7 @@ class VerificationEngineServiceTest {
     @BeforeEach
     void setUp() {
         AlertInputAdapter inputAdapter = new AlertInputAdapter();
+        AuditService auditService = mock(AuditService.class);
 
         ProviderDetector providerDetector = new ProviderDetector();
         AccountMapper accountMapper = new AccountMapper();
@@ -59,10 +61,11 @@ class VerificationEngineServiceTest {
                 azureValidator,
                 gcpValidator,
                 mock(VerificationCacheService.class),
-                mock(CircuitBreakerService.class)
+                mock(CircuitBreakerService.class),
+                auditService
         );
 
-        engineService = new VerificationEngineService(inputAdapter, validatorService);
+        engineService = new VerificationEngineService(inputAdapter, validatorService, auditService);
     }
 
     @Test

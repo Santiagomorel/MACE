@@ -1,17 +1,23 @@
 package com.company.rotations.decision.service;
 
 import com.company.rotations.decision.domain.Playbook;
+import com.company.rotations.logging.service.AuditService;
 import com.company.rotations.models.Severidad;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class DecisionEngineServiceIntegrationTest {
 
     private final PlaybookLoaderService playbookLoader = new PlaybookLoaderService(null);
-    private final CriticalityCalculator calculator = new CriticalityCalculator(playbookLoader);
+    private final CriticalityCalculator calculator = new CriticalityCalculator(playbookLoader, mock(AuditService.class));
 
     @Test
     void fullPipeline_akiaKey_s3FullAccess() {
