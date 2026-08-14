@@ -93,9 +93,18 @@ class WorkerPoolTest {
         void shouldRejectWhenQueueFull() throws InterruptedException {
             pool.start();
 
-            // Fill the queue well beyond capacity (100) while workers consume
+            // Fill the queue to capacity first
+            int capacity = pool.getQueueCapacity();
+            for (int i = 0; i < capacity; i++) {
+                GenericAlertModel alert = new GenericAlertModel();
+                alert.setEventId("fill-" + i);
+                WebhookPayload payload = new WebhookPayload(alert, "body", "src", Instant.now());
+                pool.submit(payload);
+            }
+
+            // Queue should be full now, submit more and verify rejection
             int accepted = 0;
-            for (int i = 0; i < 500; i++) {
+            for (int i = 0; i < 200; i++) {
                 GenericAlertModel alert = new GenericAlertModel();
                 alert.setEventId("e-" + i);
                 WebhookPayload payload = new WebhookPayload(alert, "body", "src", Instant.now());
@@ -104,8 +113,7 @@ class WorkerPoolTest {
                 }
             }
 
-            // At least some submissions should have been rejected (queue capacity is 100)
-            assertTrue(accepted < 500, "Some submissions should have been rejected due to queue full");
+            assertTrue(accepted < 200, "Some submissions should have been rejected due to queue full");
 
             pool.stop();
         }

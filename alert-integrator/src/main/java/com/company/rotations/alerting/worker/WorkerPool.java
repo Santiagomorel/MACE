@@ -69,7 +69,7 @@ public class WorkerPool {
         running.set(false);
         executorService.shutdown();
         try {
-            if (!executorService.awaitTermination(30, TimeUnit.SECONDS)) {
+            if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
                 executorService.shutdownNow();
             }
         } catch (InterruptedException e) {
@@ -104,7 +104,7 @@ public class WorkerPool {
         while (running.get()) {
             WebhookPayload payload;
             try {
-                payload = alertQueue.poll(5, TimeUnit.SECONDS);
+                payload = alertQueue.poll(1, TimeUnit.SECONDS);
                 if (payload == null) continue;
 
                 processAlert(payload);
@@ -172,6 +172,7 @@ public class WorkerPool {
     }
 
     public int getQueueSize() { return alertQueue.size(); }
+    public int getQueueCapacity() { return queueMaxSize; }
     public int getProcessedCount() { return processedCount.get(); }
     public int getFailedCount() { return failedCount.get(); }
     public int getPoolSize() { return poolSize; }
