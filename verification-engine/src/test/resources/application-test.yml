@@ -1,0 +1,61 @@
+app:
+  verification:
+    cache:
+      ttl-minutes: 1
+      maximum-size: 100
+    retry:
+      max-attempts: 2
+      initial-backoff-ms: 100
+      max-backoff-ms: 1000
+      backoff-multiplier: 2.0
+    circuit-breaker:
+      aws:
+        failure-threshold: 10
+        success-threshold: 5
+        wait-duration-seconds: 10
+      azure:
+        failure-threshold: 10
+        success-threshold: 5
+        wait-duration-seconds: 10
+      gcp:
+        failure-threshold: 10
+        success-threshold: 5
+        wait-duration-seconds: 10
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      awsProvider:
+        sliding-window-size: 20
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: PT10S
+        permitted-number-of-calls-in-half-open-state: 5
+        automatic-transition-from-open-to-half-open-enabled: true
+      azureProvider:
+        sliding-window-size: 20
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: PT10S
+        permitted-number-of-calls-in-half-open-state: 5
+        automatic-transition-from-open-to-half-open-enabled: true
+      gcpProvider:
+        sliding-window-size: 20
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: PT10S
+        permitted-number-of-calls-in-half-open-state: 5
+        automatic-transition-from-open-to-half-open-enabled: true
+  retry:
+    instances:
+      awsApiRetry:
+        max-attempts: 2
+        wait-duration: PT100MS
+      iamApiRetry:
+        max-attempts: 2
+        wait-duration: PT100MS
+
+logging:
+  level:
+    com.company.rotations.verification: DEBUG

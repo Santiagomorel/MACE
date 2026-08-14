@@ -1,0 +1,79 @@
+app:
+  verification:
+    cache:
+      ttl-minutes: 5
+      maximum-size: 10000
+    retry:
+      max-attempts: 3
+      initial-backoff-ms: 1000
+      max-backoff-ms: 30000
+      backoff-multiplier: 2.0
+    circuit-breaker:
+      aws:
+        failure-threshold: 5
+        success-threshold: 3
+        wait-duration-seconds: 60
+      azure:
+        failure-threshold: 5
+        success-threshold: 3
+        wait-duration-seconds: 60
+      gcp:
+        failure-threshold: 5
+        success-threshold: 3
+        wait-duration-seconds: 60
+
+spring:
+  application:
+    name: verification-engine
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      awsProvider:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state:PT1M
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+      azureProvider:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state:PT1M
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+      gcpProvider:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state:PT1M
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+  retry:
+    instances:
+      awsApiRetry:
+        max-attempts: 3
+        wait-duration: PT1S
+        retry-errors:
+          - software.amazon.awssdk.services.sts.model.InvalidClientTokenIdException
+          - software.amazon.awssdk.services.sts.model.ExpiredTokenException
+          - software.amazon.awssdk.services.iam.model.AccessDeniedException
+        retry-on:
+          - java.io.IOException
+          - java.net.SocketTimeoutException
+      iamApiRetry:
+        max-attempts: 3
+        wait-duration: PT1S
+        retry-errors:
+          - software.amazon.awssdk.services.iam.model.AccessDeniedException
+          - software.amazon.awssdk.services.iam.model.NoSuchEntityException
+        retry-on:
+          - java.io.IOException
+          - java.net.SocketTimeoutException
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
