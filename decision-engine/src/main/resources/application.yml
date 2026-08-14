@@ -1,0 +1,25 @@
+server.port=8083
+
+spring.application.name=decision-engine
+
+spring.datasource.url=jdbc:postgresql://localhost:5432/rotation_system
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=false
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+
+spring.jackson.serialization.write-dates-as-timestamps=false
+
+# Drools configuration
+decision.drools.cache-ttl-seconds=300
+decision.drools.max-drl-size-bytes=51200
+decision.drools.semaphore-ttl-seconds=900
+
+# Discovery configuration
+decision.discovery.poll-interval-hours=3
+decision.discovery.semaphore-wait-seconds=30
+
+# Actuator
+management.endpoints.web.exposure.include=health,info,metrics,prometheus
+management.endpoint.health.show-details=when_authorized

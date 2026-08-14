@@ -1,0 +1,34 @@
+playbook_id: aws-access-key-exposed
+version: "1.0.0"
+credential_types:
+  - AKIA
+severity_floor:
+  s3_full_access: CRITICO
+  s3_read_only: ALTO
+  iam_modify: CRITICO
+  ec2_instance_control: CRITICO
+  cloudwatch_read: MEDIA
+  nothing_active: BAJO
+auto_rotate:
+  required: true
+  max_window_mins: 15
+actions_on_exposure:
+  - action_type: rotate
+    target: access_key
+    priority_order: 1
+  - action_type: notify
+    target: account_owner
+    priority_order: 2
+compliance_tags:
+  - source: "ISO 27001-A.9.4.1"
+    control_description: "Management of information systems addresses and directory levels"
+  - source: "ISO 27001-A.9.2.2"
+    control_description: "Registration of user access"
+credentials_targeted:
+  - credential_type: access_key
+    description: "AWS Access Key ID (LTA) with AKIA prefix and associated Secret Access Key"
+override_allowed_by_client:
+  can_lower_floor: false
+conditions:
+  provider: aws
+  detection_source: webhook

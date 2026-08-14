@@ -1,0 +1,39 @@
+playbook_id: aws-iam-role-assumption-abuse
+version: "1.0.0"
+credential_types:
+  - AKIA
+  - ASIA
+severity_floor:
+  cross_account_assume_untrusted_trust: CRITICO
+  admin_role_assumed_from_regular_user: CRITICO
+  sensitive_data_role_from_external_entity: CRITICO
+  regular_role_from_internal_source_verified: MEDIA
+  orphaned_role_no_attached_policies: BAJO
+auto_rotate:
+  required: false
+  max_window_mins: null
+actions_on_exposure:
+  - action_type: monitor
+    target: assumed_role_session
+    priority_order: 1
+  - action_type: notify
+    target: iam_admin_team
+    priority_order: 2
+  - action_type: escalate
+    target: security_investigation_team
+    priority_order: 3
+compliance_tags:
+  - source: "ISO 27001-A.9.4.4"
+    control_description: "Management of privileged privileges and separation of duties"
+  - source: "ISO 27018-A.10"
+    control_description: "Monitoring and auditing access to cloud PII data via IAM roles"
+credentials_targeted:
+  - credential_type: access_key
+    description: "IAM Role assumption source credentials — AKIA keys used for AssumeRole API calls"
+  - credential_type: session_token
+    description: "Federation session tokens misused to assume unexpected IAM roles (SAML/OIDC)"
+override_allowed_by_client:
+  can_lower_floor: false
+conditions:
+  provider: aws
+  detection_source: webhook

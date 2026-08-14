@@ -31,6 +31,15 @@ public class DecisionOutput {
     @Column(name = "playbook_name")
     private String playbookName;
 
+    @Column(name = "calculated_via")
+    private String calculatedVia;
+
+    @Column(name = "playbook_compliance_tags", columnDefinition = "JSONB")
+    private String playbookComplianceTags;
+
+    @Column(name = "evaluated_rule_version")
+    private Integer evaluatedRuleVersion;
+
     public DecisionOutput() {}
 
     public DecisionOutput(UUID alertId, String decision, String severity,
@@ -59,4 +68,13 @@ public class DecisionOutput {
 
     public String getPlaybookName() { return playbookName; }
     public void setPlaybookName(String playbookName) { this.playbookName = playbookName; }
+
+    public String getCalculatedVia() { return calculatedVia; }
+    public void setCalculatedVia(String calculatedVia) { this.calculatedVia = calculatedVia; }
+
+    public String getPlaybookComplianceTags() { return playbookComplianceTags; }
+    public void setPlaybookComplianceTags(String playbookComplianceTags) { this.playbookComplianceTags = playbookComplianceTags; }
+
+    public Integer getEvaluatedRuleVersion() { return evaluatedRuleVersion; }
+    public void setEvaluatedRuleVersion(Integer evaluatedRuleVersion) { this.evaluatedRuleVersion = evaluatedRuleVersion; }
 }

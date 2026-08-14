@@ -1,0 +1,36 @@
+playbook_id: aws-session-token-leaked
+version: "1.0.0"
+credential_types:
+  - ASIA
+severity_floor:
+  assumed_role_admin_full_access: CRITICO
+  assumed_role_s3_read_write: ALTO
+  assumed_role_ec2_manage: ALTO
+  assumed_role_read_only: MEDIA
+  expired_within_1h: BAJO
+auto_rotate:
+  required: false
+  max_window_mins: null
+actions_on_exposure:
+  - action_type: monitor
+    target: session_token
+    priority_order: 1
+  - action_type: notify
+    target: account_owner
+    priority_order: 2
+  - action_type: escalate
+    target: security_team
+    priority_order: 3
+compliance_tags:
+  - source: "ISO 27017-A.10"
+    control_description: "Protection of information in cloud services via session token management"
+  - source: "ISO 27001-A.9.4.3"
+    control_description: "Management of access rights"
+credentials_targeted:
+  - credential_type: session_token
+    description: "AWS STS temporary credentials (Session Token/Security Token) with ASIA prefix"
+override_allowed_by_client:
+  can_lower_floor: false
+conditions:
+  provider: aws
+  detection_source: webhook

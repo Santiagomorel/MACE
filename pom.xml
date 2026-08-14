@@ -24,8 +24,8 @@
         <module>alert-integrator</module>
         <module>logging</module>
         <module>verification-engine</module>
-        <!-- <module>decision-engine</module>
-        <module>action-executor</module> -->
+        <module>decision-engine</module>
+        <!-- <module>action-executor</module> -->
     </modules>
 
     <properties>
