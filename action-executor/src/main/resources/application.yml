@@ -1,0 +1,28 @@
+server:
+  port: 8084
+
+actionexecutor:
+  vault:
+    encryption-key: defaultkey1234567890
+  notifications:
+    slack:
+      webhook-url: ${SLACK_WEBHOOK_URL:}
+    email:
+      smtp-host: ${EMAIL_SMTP_HOST:localhost}
+      smtp-port: ${EMAIL_SMTP_PORT:587}
+      from: ${EMAIL_FROM:security@mace.local}
+    ticket:
+      webhook-url: ${TICKET_WEBHOOK_URL:}
+
+aws:
+  region: ${AWS_REGION:us-east-1}
+
+logging:
+  level:
+    com.company.rotations.actionexecutor: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
