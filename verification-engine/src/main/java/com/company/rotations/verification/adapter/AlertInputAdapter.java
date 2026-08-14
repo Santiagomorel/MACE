@@ -36,7 +36,7 @@ public class AlertInputAdapter {
             alert.setContext(alertContext);
         }
 
-        alert.setRawPayload(Map.copyOf(rawPayload));
+        alert.setRawPayload(rawPayload != null ? Map.copyOf(rawPayload) : Map.of());
 
         logger.debug("Converted alert: eventId={}, source={}, accountHint={}",
                 alert.getEventId(), alert.getSource(), alert.getAccountHint());
