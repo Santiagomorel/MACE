@@ -1,25 +1,42 @@
-server.port=8083
+server:
+  port: 8083
 
-spring.application.name=decision-engine
-
-spring.datasource.url=jdbc:postgresql://localhost:5432/rotation_system
-spring.datasource.username=postgres
-spring.datasource.password=postgres
-spring.jpa.hibernate.ddl-auto=validate
-spring.jpa.show-sql=false
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
-
-spring.jackson.serialization.write-dates-as-timestamps=false
+spring:
+  application:
+    name: decision-engine
+  datasource:
+    url: jdbc:postgresql://localhost:5432/rotation_system
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
 
 # Drools configuration
-decision.drools.cache-ttl-seconds=300
-decision.drools.max-drl-size-bytes=51200
-decision.drools.semaphore-ttl-seconds=900
+decision:
+  drools:
+    cache-ttl-seconds: 300
+    max-drl-size-bytes: 51200
+    semaphore-ttl-seconds: 900
 
 # Discovery configuration
-decision.discovery.poll-interval-hours=3
-decision.discovery.semaphore-wait-seconds=30
+  discovery:
+    poll-interval-hours: 3
+    semaphore-wait-seconds: 30
 
 # Actuator
-management.endpoints.web.exposure.include=health,info,metrics,prometheus
-management.endpoint.health.show-details=when_authorized
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized

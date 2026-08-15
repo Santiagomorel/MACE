@@ -69,7 +69,7 @@ public class AwsRotationService {
                         attempt, MAX_RETRIES, credential.getKeyId(), tenantId);
 
                 try {
-                    return executeSingleRotation(credential, tenantId, stateMachine);
+                    return executeSingleRotation(credential, tenantId, stateMachine, attempt);
                 } catch (Exception e) {
                     log.warn("Rotation attempt {} failed for credential {}: {}",
                             attempt, credential.getKeyId(), e.getMessage());
@@ -79,7 +79,7 @@ public class AwsRotationService {
                     if (attempt < MAX_RETRIES) {
                         long backoffMs = RETRY_BACKOFF_SECONDS[attempt - 1] * 1000L;
                         log.info("Waiting {} ms before retry...", backoffMs);
-                        Thread.sleep(backoffMs);
+                        backoffForRetry(backoffMs);
                     }
                 }
             }
@@ -112,28 +112,6 @@ public class AwsRotationService {
 
             return result;
 
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            result.setSuccess(false);
-            result.setEndTime(Instant.now());
-            result.setErrorMessage("Rotation interrupted");
-
-            stateMachine.timeoutTransition();
-            auditTrailService.logTimeout(tenantId, credential.getId(), severity);
-
-            try {
-                auditService.logActionExecuted(Map.of(
-                        "alert_id", credential.getId().toString(),
-                        "tenant_id", tenantId,
-                        "credential_id", credential.getKeyId(),
-                        "success", false,
-                        "message", "Rotation interrupted"
-                ));
-            } catch (Exception ex) {
-                log.warn("Could not log action executed audit: {}", ex.getMessage());
-            }
-
-            return result;
         } catch (Exception e) {
             result.setSuccess(false);
             result.setEndTime(Instant.now());
@@ -161,10 +139,11 @@ public class AwsRotationService {
     }
 
     private RotationResult executeSingleRotation(Credential credential, String tenantId,
-                                                  RotationStateMachine stateMachine) {
+                                                  RotationStateMachine stateMachine, int attempt) {
         RotationResult result = new RotationResult();
         result.setAlertId(credential.getId());
         result.setStartTime(Instant.now());
+        result.setAttempts(attempt);
 
         Map<String, String> adminCredentials = vaultService.getAdminCredentials(tenantId);
         if (adminCredentials.isEmpty()) {
@@ -230,12 +209,12 @@ public class AwsRotationService {
         }
     }
 
-    private void waitForIamPropagation(String keyId) {
-        log.info("Waiting {} seconds for IAM propagation after deactivating {}",
-                IAM_PROPAGATION_WAIT_SECONDS, keyId);
+    private void waitForIamPropagation(String keyId, long maxWaitSeconds) {
+        log.info("Waiting up to {} seconds for IAM propagation after deactivating {}",
+                maxWaitSeconds, keyId);
 
         Instant waitStart = Instant.now();
-        while (Duration.between(waitStart, Instant.now()).getSeconds() < IAM_PROPAGATION_WAIT_SECONDS) {
+        while (Duration.between(waitStart, Instant.now()).getSeconds() < maxWaitSeconds) {
             try {
                 Thread.sleep(2000L);
                 if (verifyKeyInactive(keyId)) {
@@ -254,6 +233,10 @@ public class AwsRotationService {
                 keyId, Duration.between(waitStart, Instant.now()).getSeconds());
     }
 
+    protected void waitForIamPropagation(String keyId) {
+        waitForIamPropagation(keyId, IAM_PROPAGATION_WAIT_SECONDS);
+    }
+
     private boolean verifyKeyInactive(String keyId) {
         try {
             ListAccessKeysRequest request = ListAccessKeysRequest.builder().build();
@@ -270,6 +253,14 @@ public class AwsRotationService {
         } catch (Exception e) {
             log.warn("Could not verify key status for {}: {}", keyId, e.getMessage());
             return false;
+        }
+    }
+
+    protected void backoffForRetry(long backoffMs) {
+        try {
+            Thread.sleep(backoffMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 

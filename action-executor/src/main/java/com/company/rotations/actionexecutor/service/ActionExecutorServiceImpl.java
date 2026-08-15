@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -74,15 +75,15 @@ public class ActionExecutorServiceImpl implements ActionExecutor {
         }
 
         try {
-            auditService.logActionExecuted(Map.of(
-                    "alert_id", alertId.toString(),
-                    "tenant_id", tenantId,
-                    "severity", severity.name(),
-                    "credential_id", credential.getKeyId(),
-                    "success", result.isSuccess(),
-                    "escalated", result.isEscalated(),
-                    "message", result.getErrorMessage()
-            ));
+            Map<String, Object> completionData = new HashMap<>();
+            completionData.put("alert_id", alertId.toString());
+            completionData.put("tenant_id", tenantId);
+            completionData.put("severity", severity.name());
+            completionData.put("credential_id", credential.getKeyId());
+            completionData.put("success", result.isSuccess());
+            completionData.put("escalated", result.isEscalated());
+            completionData.put("message", result.getErrorMessage() != null ? result.getErrorMessage() : "");
+            auditService.logActionExecuted(completionData);
         } catch (Exception e) {
             log.warn("Could not log action completed audit: {}", e.getMessage());
         }

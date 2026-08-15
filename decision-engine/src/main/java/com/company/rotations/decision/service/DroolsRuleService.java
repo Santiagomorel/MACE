@@ -36,8 +36,10 @@ public class DroolsRuleService {
     private int maxDrlSizeBytes;
 
     public DroolsRuleService(ClientRuleRepository clientRuleRepository,
-                              @Value("${decision.drools.cache-ttl-seconds:300}") long cacheTtlSeconds) {
+                               @Value("${decision.drools.cache-ttl-seconds:300}") long cacheTtlSeconds,
+                               @Value("${decision.drools.max-drl-size-bytes:51200}") int maxDrlSizeBytes) {
         this.clientRuleRepository = clientRuleRepository;
+        this.maxDrlSizeBytes = maxDrlSizeBytes;
         this.kieSessionCache = Caffeine.newBuilder()
                 .maximumSize(100)
                 .expireAfterWrite(cacheTtlSeconds, TimeUnit.SECONDS)
@@ -125,7 +127,7 @@ public class DroolsRuleService {
             return 0;
         } catch (Exception e) {
             log.error("DRL validation exception: {}", e.getMessage());
-            return -1;
+            return 1;
         }
     }
 
