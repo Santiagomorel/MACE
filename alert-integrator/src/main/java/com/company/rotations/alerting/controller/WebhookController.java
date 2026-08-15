@@ -1,5 +1,6 @@
 package com.company.rotations.alerting.controller;
 
+import com.company.rotations.alerting.AlertMetricsCollector;
 import com.company.rotations.alerting.adapter.AdapterRegistry;
 import com.company.rotations.alerting.dedup.EventDedupService;
 import com.company.rotations.alerting.dedup.SecretDedupService;
@@ -37,14 +38,16 @@ public class WebhookController {
     private final SecretDedupService secretDedupService;
     private final DeadLetterQueueService dlqService;
     private final AuditService auditService;
+    private final AlertMetricsCollector metricsCollector;
 
     public WebhookController(SignatureValidator signatureValidator,
-                             IpWhitelistValidator ipWhitelistValidator,
-                             AdapterRegistry adapterRegistry,
-                             EventDedupService eventDedupService,
-                             SecretDedupService secretDedupService,
-                             DeadLetterQueueService dlqService,
-                             AuditService auditService) {
+                              IpWhitelistValidator ipWhitelistValidator,
+                              AdapterRegistry adapterRegistry,
+                              EventDedupService eventDedupService,
+                              SecretDedupService secretDedupService,
+                              DeadLetterQueueService dlqService,
+                              AuditService auditService,
+                              AlertMetricsCollector metricsCollector) {
         this.signatureValidator = signatureValidator;
         this.ipWhitelistValidator = ipWhitelistValidator;
         this.adapterRegistry = adapterRegistry;
@@ -52,6 +55,7 @@ public class WebhookController {
         this.secretDedupService = secretDedupService;
         this.dlqService = dlqService;
         this.auditService = auditService;
+        this.metricsCollector = metricsCollector;
     }
 
     @PostMapping
@@ -65,6 +69,8 @@ public class WebhookController {
 
         String source = detectSource(rawPayload);
         long startTime = System.currentTimeMillis();
+        metricsCollector.recordWebhookReceived();
+        metricsCollector.recordSource(source);
 
         try {
             logger.info("[{}] Webhook received from source: {}", requestId, source);
@@ -74,6 +80,7 @@ public class WebhookController {
 
             if (!signatureValidator.isValid(body, getSignature(request), source)) {
                 logger.warn("[{}] Signature validation failed for source: {}", requestId, source);
+                metricsCollector.recordWebhookRejected();
                 auditService.logSignatureVerificationFailed(source, getSignature(request));
                 MDC.remove("requestId");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -100,6 +107,7 @@ public class WebhookController {
             String sourceEventId = extractSourceEventId(rawPayload);
             if (sourceEventId != null && eventDedupService.isDuplicate(sourceEventId)) {
                 logger.info("[{}] Duplicate event skipped: sourceEventId={}", requestId, sourceEventId);
+                metricsCollector.recordEventDedupHit();
                 auditService.logAlertDeduplicated(source, sourceEventId, "event_dedup");
                 MDC.remove("requestId");
                 return ResponseEntity.status(HttpStatus.OK)
@@ -116,6 +124,7 @@ public class WebhookController {
 
             if (secretDedupResult == SecretDedupService.DedupResult.SKIP_COOLDOWN) {
                 logger.info("[{}] Secret dedup cooldown skip: sourceEventId={}", requestId, sourceEventId);
+                metricsCollector.recordSecretDedupCooldown();
                 auditService.logAlertDeduplicated(source, sourceEventId, "secret_dedup_cooldown");
                 MDC.remove("requestId");
                 return ResponseEntity.status(HttpStatus.OK)
@@ -128,6 +137,7 @@ public class WebhookController {
 
             if (secretDedupResult == SecretDedupService.DedupResult.SKIP_IN_PROGRESS) {
                 logger.info("[{}] Secret already being processed: sourceEventId={}", requestId, sourceEventId);
+                metricsCollector.recordSecretDedupInProgress();
                 auditService.logAlertDeduplicated(source, sourceEventId, "secret_dedup_in_progress");
                 MDC.remove("requestId");
                 return ResponseEntity.status(HttpStatus.OK)
@@ -138,11 +148,17 @@ public class WebhookController {
                         ));
             }
 
+            String adapterName = adapterRegistry.getProviderName(source);
+            metricsCollector.recordAdapterRoute(adapterName);
             GenericAlertModel genericAlert = adapterRegistry.adapt(source, rawPayload);
 
             WebhookPayload payload = new WebhookPayload(genericAlert, body, source, Instant.now());
 
-            logger.info("[{}] Alert processed successfully: source={}, eventId={}, secretType={}",
+            long duration = System.currentTimeMillis() - startTime;
+            metricsCollector.recordPipelineDuration(duration);
+            metricsCollector.recordAlertProcessed();
+
+            logger.info("[{}] Alert processed successfully: source={}, eventId={}, secretType={}, duration={}ms",
                     requestId, source, genericAlert.getEventId(),
                     genericAlert.getDetectedSecret() != null ? genericAlert.getDetectedSecret().getType() : "unknown");
 
@@ -150,7 +166,6 @@ public class WebhookController {
 
             dlqService.processAlert(payload);
 
-            long duration = System.currentTimeMillis() - startTime;
             MDC.put("durationMs", String.valueOf(duration));
             return ResponseEntity.ok(Map.of(
                     "status", "accepted",
@@ -160,6 +175,11 @@ public class WebhookController {
             ));
 
         } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
+            metricsCollector.recordPipelineDuration(duration);
+            metricsCollector.recordAlertFailed();
+            metricsCollector.recordAlertToDlq();
+
             logger.error("[{}] Pipeline error: {}", requestId, e.getMessage(), e);
             auditService.logProcessingFailed(source, rawPayload, e.getMessage());
 

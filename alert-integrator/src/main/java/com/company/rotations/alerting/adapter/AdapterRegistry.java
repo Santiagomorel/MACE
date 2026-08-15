@@ -59,4 +59,12 @@ public class AdapterRegistry {
     public List<String> getRegisteredProviders() {
         return List.copyOf(adapters.keySet());
     }
+
+    public String getProviderName(String source) {
+        Optional<AlertAdapter> adapter = getAdapter(source);
+        if (adapter.isPresent()) {
+            return adapter.get().getProviderName();
+        }
+        return defaultAdapter.getProviderName();
+    }
 }

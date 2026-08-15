@@ -27,6 +27,11 @@ public class SecretDedupService {
         this.tpCooldownMillis = TimeUnit.HOURS.toMillis(tpCooldownHours);
     }
 
+    public SecretDedupService(double fpCooldownMillis, double tpCooldownMillis) {
+        this.fpCooldownMillis = (long) fpCooldownMillis;
+        this.tpCooldownMillis = (long) tpCooldownMillis;
+    }
+
     @PostConstruct
     public void init() {
         cache = Caffeine.newBuilder()
@@ -34,8 +39,8 @@ public class SecretDedupService {
                 .maximumSize(500_000)
                 .recordStats()
                 .build();
-        logger.info("SecretDedupService initialized with FP cooldown={}h, TP cooldown={}h",
-                fpCooldownMillis / 3600000, tpCooldownMillis / 3600000);
+        logger.info("SecretDedupService initialized with FP cooldown={}ms, TP cooldown={}ms",
+                fpCooldownMillis, tpCooldownMillis);
     }
 
     public DedupResult checkOrRegister(String valueHash, String repository) {
@@ -51,6 +56,12 @@ public class SecretDedupService {
             return DedupResult.PROCEED;
         }
 
+        if (existing.getStatus() == SecretDedupStatus.PROCESSING) {
+            logger.debug("Secret dedup hit (in_progress): valueHash={}, repo={}",
+                    truncate(valueHash), repository);
+            return DedupResult.SKIP_IN_PROGRESS;
+        }
+
         long elapsed = java.time.Duration.between(existing.getTimestamp(), Instant.now()).toMillis();
         long cooldown = existing.getStatus() == SecretDedupStatus.FALSE_POSITIVE
                 ? fpCooldownMillis : tpCooldownMillis;
@@ -59,12 +70,6 @@ public class SecretDedupService {
             logger.debug("Secret dedup hit (cooldown): status={}, elapsed={}ms, cooldown={}ms",
                     existing.getStatus(), elapsed, cooldown);
             return DedupResult.SKIP_COOLDOWN;
-        }
-
-        if (existing.getStatus() == SecretDedupStatus.PROCESSING) {
-            logger.debug("Secret dedup hit (in_progress): valueHash={}, repo={}",
-                    truncate(valueHash), repository);
-            return DedupResult.SKIP_IN_PROGRESS;
         }
 
         cache.put(key, new SecretDedupEntry(SecretDedupStatus.PROCESSING, Instant.now()));

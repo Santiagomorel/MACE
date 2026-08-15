@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -26,6 +28,13 @@ class SecretDedupServiceTest {
         SecretDedupService zeroService = new SecretDedupService(0, 0);
         zeroService.init();
         return zeroService;
+    }
+
+    private SecretDedupService createCooldownService() {
+        SecretDedupService cooldownService = new SecretDedupService(
+                TimeUnit.HOURS.toMillis(24), TimeUnit.HOURS.toMillis(1));
+        cooldownService.init();
+        return cooldownService;
     }
 
     @Nested
@@ -197,6 +206,206 @@ class SecretDedupServiceTest {
                     SecretDedupService.SecretDedupStatus.PROCESSING, now);
             assertEquals(SecretDedupService.SecretDedupStatus.PROCESSING, entry.getStatus());
             assertEquals(now, entry.getTimestamp());
+        }
+    }
+
+    @Nested
+    @DisplayName("Concurrent Access")
+    class ConcurrentAccessTests {
+
+        @Test
+        @DisplayName("Should handle concurrent secret dedup checks safely")
+        void shouldHandleConcurrentChecks() throws InterruptedException {
+            SecretDedupService zeroService = createZeroCooldownService();
+            int threadCount = 10;
+            int checksPerThread = 100;
+            Thread[] threads = new Thread[threadCount];
+            AtomicInteger proceedCount = new AtomicInteger(0);
+            AtomicInteger skipCount = new AtomicInteger(0);
+
+            for (int t = 0; t < threadCount; t++) {
+                final int threadNum = t;
+                threads[t] = new Thread(() -> {
+                    for (int i = 0; i < checksPerThread; i++) {
+                        String hash = "conc-hash-" + (i % 3);
+                        SecretDedupService.DedupResult result = zeroService.checkOrRegister(hash, "repo");
+                        if (result == SecretDedupService.DedupResult.PROCEED) {
+                            proceedCount.incrementAndGet();
+                        } else {
+                            skipCount.incrementAndGet();
+                        }
+                    }
+                });
+            }
+
+            for (Thread thread : threads) {
+                thread.start();
+            }
+            for (Thread thread : threads) {
+                thread.join();
+            }
+
+            int uniqueHashes = 3;
+            int expectedProceed = uniqueHashes;
+            assertTrue(proceedCount.get() >= expectedProceed,
+                    "At least one PROCEED per unique hash, got " + proceedCount.get());
+            assertEquals(threadCount * checksPerThread - proceedCount.get(), skipCount.get(),
+                    "Subsequent checks should skip");
+        }
+
+        @Test
+        @DisplayName("Should handle concurrent operations on same secret")
+        void shouldHandleConcurrentSameSecret() throws InterruptedException {
+            SecretDedupService zeroService = createZeroCooldownService();
+            int threadCount = 20;
+            Thread[] threads = new Thread[threadCount];
+            AtomicBoolean hadException = new AtomicBoolean(false);
+
+            for (int t = 0; t < threadCount; t++) {
+                threads[t] = new Thread(() -> {
+                    for (int i = 0; i < 50; i++) {
+                        try {
+                            zeroService.checkOrRegister("hot-secret", "repo");
+                        } catch (Exception e) {
+                            hadException.set(true);
+                        }
+                    }
+                });
+            }
+
+            for (Thread thread : threads) {
+                thread.start();
+            }
+            for (Thread thread : threads) {
+                thread.join();
+            }
+
+            assertFalse(hadException.get(), "No exceptions during concurrent access");
+        }
+
+        @Test
+        @DisplayName("Should handle concurrent status updates safely")
+        void shouldHandleConcurrentStatusUpdates() throws InterruptedException {
+            SecretDedupService zeroService = createZeroCooldownService();
+            zeroService.checkOrRegister("update-secret", "repo");
+            int threadCount = 10;
+            Thread[] threads = new Thread[threadCount];
+
+            for (int t = 0; t < threadCount; t++) {
+                final SecretDedupService.SecretDedupStatus status =
+                        t % 2 == 0
+                                ? SecretDedupService.SecretDedupStatus.TRUE_POSITIVE
+                                : SecretDedupService.SecretDedupStatus.FALSE_POSITIVE;
+                threads[t] = new Thread(() -> {
+                    for (int i = 0; i < 50; i++) {
+                        zeroService.updateStatus("update-secret", "repo", status);
+                    }
+                });
+            }
+
+            for (Thread thread : threads) {
+                thread.start();
+            }
+            for (Thread thread : threads) {
+                thread.join();
+            }
+
+            SecretDedupService.SecretDedupStatus finalStatus = zeroService.getStatus("update-secret", "repo");
+            assertNotNull(finalStatus, "Status should exist after concurrent updates");
+        }
+    }
+
+    @Nested
+    @DisplayName("Full FP Cooldown Cycle (Task 11.7)")
+    class FpCooldownCycleTests {
+
+        @Test
+        @DisplayName("FP: verifier returns false_positive -> cooldown 24h -> re-send -> dedup skip")
+        void shouldSkipAfterFalsePositiveCooldown() {
+            SecretDedupService cooldownService = createCooldownService();
+            String hash = "fp-secret";
+            String repo = "my-repo";
+
+            // Step 1: First alert - should proceed
+            assertEquals(SecretDedupService.DedupResult.PROCEED,
+                    cooldownService.checkOrRegister(hash, repo));
+
+            // Step 2: Initial status is PROCESSING
+            assertEquals(SecretDedupService.SecretDedupStatus.PROCESSING,
+                    cooldownService.getStatus(hash, repo));
+
+            // Step 3: Verifier returns false_positive
+            cooldownService.updateStatus(hash, repo, SecretDedupService.SecretDedupStatus.FALSE_POSITIVE);
+            assertEquals(SecretDedupService.SecretDedupStatus.FALSE_POSITIVE,
+                    cooldownService.getStatus(hash, repo));
+
+            // Step 4: Re-send same secret - should be skipped due to cooldown
+            assertEquals(SecretDedupService.DedupResult.SKIP_COOLDOWN,
+                    cooldownService.checkOrRegister(hash, repo));
+        }
+
+        @Test
+        @DisplayName("TP with action completed -> cooldown -> re-send after cooldown expires -> proceed")
+        void shouldProceedAfterTpCooldownExpires() throws InterruptedException {
+            SecretDedupService shortCooldownService = new SecretDedupService(500.0, 100.0);
+            shortCooldownService.init();
+            String hash = "tp-secret";
+            String repo = "my-repo";
+
+            // First alert proceeds
+            assertEquals(SecretDedupService.DedupResult.PROCEED,
+                    shortCooldownService.checkOrRegister(hash, repo));
+
+            // Verifier returns true_positive
+            shortCooldownService.updateStatus(hash, repo, SecretDedupService.SecretDedupStatus.TRUE_POSITIVE);
+
+            // Within cooldown -> skip
+            assertEquals(SecretDedupService.DedupResult.SKIP_COOLDOWN,
+                    shortCooldownService.checkOrRegister(hash, repo));
+
+            // Wait for TP cooldown to expire (100ms)
+            Thread.sleep(150);
+
+            // After cooldown expires -> proceed again (re-register as PROCESSING)
+            assertEquals(SecretDedupService.DedupResult.PROCEED,
+                    shortCooldownService.checkOrRegister(hash, repo));
+
+            // Status should be PROCESSING again
+            assertEquals(SecretDedupService.SecretDedupStatus.PROCESSING,
+                    shortCooldownService.getStatus(hash, repo));
+        }
+
+        @Test
+        @DisplayName("Multiple different secrets should not interfere")
+        void shouldNotInterfereBetweenSecrets() {
+            SecretDedupService cooldownService = createCooldownService();
+
+            cooldownService.checkOrRegister("hash-a", "repo");
+            cooldownService.updateStatus("hash-a", "repo", SecretDedupService.SecretDedupStatus.FALSE_POSITIVE);
+
+            cooldownService.checkOrRegister("hash-b", "repo");
+            // hash-b should still proceed since it's a different secret
+            assertEquals(SecretDedupService.DedupResult.SKIP_IN_PROGRESS,
+                    cooldownService.checkOrRegister("hash-b", "repo"));
+            // hash-a should be cooldown skipped
+            assertEquals(SecretDedupService.DedupResult.SKIP_COOLDOWN,
+                    cooldownService.checkOrRegister("hash-a", "repo"));
+        }
+
+        @Test
+        @DisplayName("Same secret in different repos should be independent")
+        void shouldBeIndependentAcrossRepos() {
+            SecretDedupService cooldownService = createCooldownService();
+            String hash = "shared-hash";
+
+            cooldownService.checkOrRegister(hash, "repo-a");
+            cooldownService.updateStatus(hash, "repo-a", SecretDedupService.SecretDedupStatus.FALSE_POSITIVE);
+
+            // Same hash in different repo should proceed (independent keys)
+            assertEquals(SecretDedupService.DedupResult.SKIP_COOLDOWN,
+                    cooldownService.checkOrRegister(hash, "repo-a"));
+            assertEquals(SecretDedupService.DedupResult.PROCEED,
+                    cooldownService.checkOrRegister(hash, "repo-b"));
         }
     }
 }

@@ -15,8 +15,8 @@
 - [x] [R2] 2.3 Implement IP whitelist validation (configurable per provider)
 - [x] [R2] 2.4 Add structured logging for all webhook arrivals (valid and invalid)
 - [x] [R2] 2.5 Return appropriate HTTP status codes (200 for success/dedup skip, 401 for signature failure, 403 for IP blocked)
-- [ ] [R2] 2.6 Write unit tests for signature validation (valid/invalid signatures, missing headers)
-- [ ] [R2] 2.7 Write unit tests for IP whitelist (allowed IP, blocked IP, missing IP header)
+- [x] [R2] 2.6 Write unit tests for signature validation (valid/invalid signatures, missing headers)
+- [x] [R2] 2.7 Write unit tests for IP whitelist (allowed IP, blocked IP, missing IP header)
 
 ## 3. Adapter Pattern Implementation
 
@@ -28,8 +28,8 @@
   - Set `detectorState` with `isNew` and `previouslyFlagged` based on GitGuardian metadata
 - [x] [R2] 3.2 Implement `DefaultAdapter` as fallback for unknown sources (basic parse, type = "generic")
 - [x] [R2] 3.3 Register `GitGuardianAdapter` in `AdapterRegistry` on startup
-- [ ] [R2] 3.4 Write unit tests for GitGuardianAdapter (mapping all fields, handling missing optional fields)
-- [ ] [R2] 3.5 Write unit tests for AdapterRegistry (found adapter, missing adapter → default)
+- [x] [R2] 3.4 Write unit tests for GitGuardianAdapter (mapping all fields, handling missing optional fields)
+- [x] [R2] 3.5 Write unit tests for AdapterRegistry (found adapter, missing adapter → default)
 
 ## 4. Event-Level Deduplication
 
@@ -39,7 +39,7 @@
   - TTL: configurable (default 5 minutes)
 - [x] [R2] 4.2 Integrate event dedup into the webhook processing pipeline (check before adapter)
 - [x] [R2] 4.3 Handle cache eviction and TTL expiration correctly
-- [ ] [R2] 4.4 Write unit tests for event dedup (hit, miss, TTL expiration, concurrent access)
+- [x] [R2] 4.4 Write unit tests for event dedup (hit, miss, TTL expiration, concurrent access)
 
 ## 5. Secret-Level Deduplication with State
 
@@ -51,7 +51,7 @@
   - `true_positive` + action completed → cooldown 1 hour
   - `in_progress` → immediate skip
 - [x] [R2] 5.3 Implement state update mechanism: when verifier completes, update secret dedup entry with result
-- [ ] [R2] 5.4 Write unit tests for secret dedup (all state transitions, cooldown periods, concurrent access)
+- [x] [R2] 5.4 Write unit tests for secret dedup (all state transitions, cooldown periods, concurrent access)
 
 ## 6. Webhook Processing Pipeline
 
@@ -59,7 +59,7 @@
 - [x] [R2] 6.2 Integrate adapter selection into the pipeline
 - [x] [R2] 6.3 Handle pipeline failures gracefully (send to DLQ, log error, return HTTP 200)
 - [ ] [R2] 6.4 Add metrics collection: pipeline duration, dedup hit rate, adapter routing stats
-- [ ] [R2] 6.5 Write integration test for complete pipeline with mocked adapter and cache
+- [x] [R2] 6.5 Write integration test for complete pipeline with mocked adapter and cache
 
 ## 7. Worker Pool and Async Processing
 
@@ -67,7 +67,7 @@
 - [x] [R2] 7.2 Implement queue-based task submission (alerts enter queue, workers pull from queue)
 - [x] [R2] 7.3 Each worker executes: process alert → call verifier → update secret dedup state → send to decision engine (if applicable)
 - [x] [R2] 7.4 Implement backpressure: queue has max size, reject or DLQ when full
-- [ ] [R2] 7.5 Write unit tests for worker pool (concurrent processing, backpressure, worker failure)
+- [x] [R2] 7.5 Write unit tests for worker pool (concurrent processing, backpressure, worker failure)
 
 ## 8. Dead Letter Queue
 
@@ -75,7 +75,7 @@
 - [x] [R2] 8.2 Implement `DeadLetterQueueService` for inserting failed alerts
 - [x] [R2] 8.3 Integrate DLQ into the pipeline (parsing failures, adapter failures, processing failures after max retries)
 - [x] [R2] 8.4 Implement DLQ cleanup task (delete entries older than 7 days)
-- [ ] [R2] 8.5 Write unit tests for DLQ (insert, retrieve, cleanup, max retries)
+- [x] [R2] 8.5 Write unit tests for DLQ (insert, retrieve, cleanup, max retries)
 
 ## 9. Credential Verifier Integration (Modified)
 
@@ -115,6 +115,8 @@
 ## Current State
 
 - **Build status**: `mvn compile -pl alert-integrator -am` — SUCCESS
-- **Files compiled**: 26 source files in alert-integrator + 9 in logging
-- **Remaining**: Tests (tasks 2.6, 2.7, 3.4, 3.5, 4.4, 5.4, 6.4, 6.5, 7.5, 8.5, 9.x, 10.4, 11.x, 12.x), credential verifier integration (section 9), docs (section 12)
+- **Files compiled**: 27 source files in alert-integrator + 9 in logging
+- **Test status**: `mvn test -pl alert-integrator -am` — 223 tests, 0 failures, 0 errors
+- **Completed test tasks**: 2.6 (signature validation), 2.7 (IP whitelist), 3.4 (GitGuardian adapter), 3.5 (AdapterRegistry), 4.4 (event dedup), 5.4 (secret dedup), 6.5 (pipeline integration), 7.5 (worker pool), 8.5 (DLQ)
+- **Remaining**: 6.4 (metrics standalone tests), 9.x (verifier integration), 10.4 (security review), 11.1 (GenericAlertModel serialization), 11.4 (E2E with worker+verifier), 11.6 (load test), 12.x (docs/deployment)
 - **Module is production-ready for testing phase**

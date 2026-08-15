@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -18,9 +20,122 @@ class EventDedupServiceTest {
 
     @BeforeEach
     void setUp() {
-        // Use short TTL for testing
-        service = new EventDedupService(1);
+        // Use short TTL for testing (1 second)
+        service = new EventDedupService(1.0);
         service.init();
+    }
+
+    @Nested
+    @DisplayName("TTL Expiration")
+    class TtlExpirationTests {
+
+        @Test
+        @DisplayName("Should return false for event after TTL expiration")
+        void shouldReturnFalseAfterTtlExpiry() throws InterruptedException {
+            service.isDuplicate("expire-event");
+            assertTrue(service.isDuplicate("expire-event"));
+            Thread.sleep(1500);
+            assertFalse(service.isDuplicate("expire-event"));
+        }
+
+        @Test
+        @DisplayName("Should distinguish expired and non-expired events")
+        void shouldDistinguishExpiredAndNonExpired() throws InterruptedException {
+            service.isDuplicate("old-event");
+            Thread.sleep(1500);
+            service.isDuplicate("new-event");
+            // Old event should have expired (registered 1.5s ago with 1s TTL)
+            assertFalse(service.isDuplicate("old-event"), "Old event should have expired");
+            // New event should still be in cache (registered just now)
+            assertTrue(service.isDuplicate("new-event"), "New event should still be in cache");
+        }
+
+        @Test
+        @DisplayName("Should expire multiple events after TTL")
+        void shouldExpireAllEventsAfterTtl() throws InterruptedException {
+            for (int i = 0; i < 5; i++) {
+                service.isDuplicate("multi-event-" + i);
+            }
+            for (int i = 0; i < 5; i++) {
+                assertTrue(service.isDuplicate("multi-event-" + i));
+            }
+            Thread.sleep(1500);
+            for (int i = 0; i < 5; i++) {
+                assertFalse(service.isDuplicate("multi-event-" + i), "All events should have expired");
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Concurrent Access")
+    class ConcurrentAccessTests {
+
+        @Test
+        @DisplayName("Should handle concurrent duplicate checks safely")
+        void shouldHandleConcurrentChecks() throws InterruptedException {
+            int threadCount = 10;
+            int checksPerThread = 100;
+            Thread[] threads = new Thread[threadCount];
+            AtomicInteger hitCount = new AtomicInteger(0);
+            AtomicInteger missCount = new AtomicInteger(0);
+
+            for (int t = 0; t < threadCount; t++) {
+                final int threadNum = t;
+                threads[t] = new Thread(() -> {
+                    for (int i = 0; i < checksPerThread; i++) {
+                        String eventId = "concurrent-event-" + (i % 5);
+                        if (service.isDuplicate(eventId)) {
+                            hitCount.incrementAndGet();
+                        } else {
+                            missCount.incrementAndGet();
+                        }
+                    }
+                });
+            }
+
+            for (Thread thread : threads) {
+                thread.start();
+            }
+            for (Thread thread : threads) {
+                thread.join();
+            }
+
+            int uniqueEvents = 5;
+            assertTrue(missCount.get() >= uniqueEvents,
+                    "At least one miss per unique event, got " + missCount.get());
+            assertEquals(threadCount * checksPerThread - missCount.get(), hitCount.get(),
+                    "Subsequent checks should be hits");
+        }
+
+        @Test
+        @DisplayName("Should handle concurrent operations on same event")
+        void shouldHandleConcurrentSameEvent() throws InterruptedException {
+            int threadCount = 20;
+            Thread[] threads = new Thread[threadCount];
+            AtomicBoolean hadException = new AtomicBoolean(false);
+
+            for (int t = 0; t < threadCount; t++) {
+                threads[t] = new Thread(() -> {
+                    for (int i = 0; i < 50; i++) {
+                        try {
+                            service.isDuplicate("hot-event");
+                        } catch (Exception e) {
+                            hadException.set(true);
+                        }
+                    }
+                });
+            }
+
+            for (Thread thread : threads) {
+                thread.start();
+            }
+            for (Thread thread : threads) {
+                thread.join();
+            }
+
+            assertFalse(hadException.get(), "No exceptions should occur during concurrent access");
+            assertTrue(service.isDuplicate("hot-event"), "Event should still be in cache");
+        }
     }
 
     @Nested

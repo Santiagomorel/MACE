@@ -4,6 +4,21 @@ Provide credential verification for exposed secrets detected by monitoring syste
 
 ## Requirements
 
+### Requirement: Credential Verifier Input Accepts Generic Alert Model
+El sistema del verificador de credenciales SHALL aceptar alerts en formato `GenericAlertModel` en lugar de un formato especifico de GitGuardian.
+
+#### Scenario: Verifier processes alert with explicit secret type
+- **WHEN** el verificador recibe un `GenericAlertModel` donde `detectedSecret.type` es `"aws_access_key"`
+- **THEN** el verificador enruta a la ruta de verificacion AWS directamente sin necesidad de heuristica de prefix
+
+#### Scenario: Verifier handles generic type with heuristic fallback
+- **WHEN** el verificador recibe un `GenericAlertModel` donde `detectedSecret.type` es `"generic"`
+- **THEN** el verificador aplica heuristica por prefix (AKIA, eyJ, AIzaSy) como fallback para determinar el proveedor
+
+#### Scenario: Verifier ignores GitGuardian-specific fields
+- **WHEN** el verificador recibe un `GenericAlertModel`
+- **THEN** NO depende de campos especificos de GitGuardian (como `account_hint`), sino que usa los campos genericos del modelo
+
 ### Requirement: Provider Detection via Alert Source
 El sistema SHALL detectar automaticamente el tipo de proveedor cloud (AWS, Azure, GCP) de una credencial expuesta, utilizando GitGuardian como fuente primaria y heuristica por prefix como fallback.
 

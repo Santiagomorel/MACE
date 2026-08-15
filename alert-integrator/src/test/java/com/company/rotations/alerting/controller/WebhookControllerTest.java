@@ -1,5 +1,6 @@
 package com.company.rotations.alerting.controller;
 
+import com.company.rotations.alerting.AlertMetricsCollector;
 import com.company.rotations.alerting.adapter.AdapterRegistry;
 import com.company.rotations.alerting.dedup.EventDedupService;
 import com.company.rotations.alerting.dedup.SecretDedupService;
@@ -32,6 +33,7 @@ class WebhookControllerTest {
     private SecretDedupService secretDedupService;
     private DeadLetterQueueService dlqService;
     private AuditService auditService;
+    private AlertMetricsCollector metricsCollector;
     private WebhookController controller;
     private HttpServletRequest request;
     private HttpServletResponse response;
@@ -45,9 +47,10 @@ class WebhookControllerTest {
         secretDedupService = mock(SecretDedupService.class);
         dlqService = mock(DeadLetterQueueService.class);
         auditService = mock(AuditService.class);
+        metricsCollector = mock(AlertMetricsCollector.class);
         controller = new WebhookController(
                 signatureValidator, ipWhitelistValidator, adapterRegistry,
-                eventDedupService, secretDedupService, dlqService, auditService);
+                eventDedupService, secretDedupService, dlqService, auditService, metricsCollector);
         request = mock(HttpServletRequest.class);
         response = mock(HttpServletResponse.class);
     }

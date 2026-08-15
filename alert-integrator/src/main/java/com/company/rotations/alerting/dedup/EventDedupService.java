@@ -17,21 +17,25 @@ public class EventDedupService {
     private static final Logger logger = LoggerFactory.getLogger(EventDedupService.class);
 
     private Cache<String, Instant> cache;
-    private final long ttlMinutes;
+    private final long ttlSeconds;
 
     public EventDedupService(
             @Value("${app.alerting.event-dedup-ttl-minutes:5}") long ttlMinutes) {
-        this.ttlMinutes = ttlMinutes;
+        this.ttlSeconds = ttlMinutes * 60;
+    }
+
+    public EventDedupService(double ttlSeconds) {
+        this.ttlSeconds = (long) ttlSeconds;
     }
 
     @PostConstruct
     public void init() {
         cache = Caffeine.newBuilder()
-                .expireAfterWrite(ttlMinutes, TimeUnit.MINUTES)
+                .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
                 .maximumSize(100_000)
                 .recordStats()
                 .build();
-        logger.info("EventDedupService initialized with TTL={} minutes, maxCacheSize=100000", ttlMinutes);
+        logger.info("EventDedupService initialized with TTL={} seconds, maxCacheSize=100000", ttlSeconds);
     }
 
     public boolean isDuplicate(String sourceEventId) {
@@ -41,13 +45,13 @@ public class EventDedupService {
         String key = hashKey(sourceEventId);
         Instant existingTimestamp = cache.getIfPresent(key);
         if (existingTimestamp != null) {
-            logger.debug("Event dedup hit for sourceEventId={}, TTL remaining={}min",
-                    sourceEventId, ttlMinutes - (java.time.Duration.between(existingTimestamp, Instant.now()).toMinutes()));
+            logger.debug("Event dedup hit for sourceEventId={}, TTL remaining={}s",
+                    sourceEventId, ttlSeconds - java.time.Duration.between(existingTimestamp, Instant.now()).toSeconds());
             return true;
         }
         cache.put(key, Instant.now());
-        logger.debug("Event dedup miss for sourceEventId={}, storing with TTL={}min",
-                sourceEventId, ttlMinutes);
+        logger.debug("Event dedup miss for sourceEventId={}, storing with TTL={}s",
+                sourceEventId, ttlSeconds);
         return false;
     }
 
