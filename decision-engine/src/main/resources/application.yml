@@ -30,6 +30,15 @@ decision:
   discovery:
     poll-interval-hours: 3
     semaphore-wait-seconds: 30
+    scheduled-rate: 10800000
+    enabled: true
+
+# Webhook configuration
+  webhook:
+    credential-exposure:
+      enabled: true
+      signature-validation: false
+    rate-limit-per-tenant-per-minute: 10
 
 # Actuator
 management:

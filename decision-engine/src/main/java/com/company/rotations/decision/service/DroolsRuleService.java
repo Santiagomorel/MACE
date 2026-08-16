@@ -147,6 +147,10 @@ public class DroolsRuleService {
                 .orElse(0);
     }
 
+    public int getMaxDrlSizeBytes() {
+        return maxDrlSizeBytes;
+    }
+
     private KieSession createSessionFromDrl(byte[] drlContent, String tenantId) {
         try {
             String drl = new String(drlContent, "UTF-8");

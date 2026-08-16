@@ -336,6 +336,221 @@ class DecisionEngineControllerTest {
                 .andExpect(jsonPath("$.applied").value(true));
     }
 
+    @Test
+    void handleCredentialExposureWebhook_withCredentials_updated() throws Exception {
+        String tenantId = "tenant1";
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("tenantId", tenantId);
+        payload.put("resource", "s3:my-bucket");
+        payload.put("awsCredentials", Map.of("accessKey", "AKIA123", "secretKey", "secret"));
+
+        when(discoveryService.pushDiscovery(eq(tenantId), anyMap(), eq("unknown")))
+                .thenAnswer(invocation -> {
+                    AwsMetadataDiscoveryService.PushDiscoveryResult r =
+                            AwsMetadataDiscoveryService.PushDiscoveryResult.updated(
+                                    tenantId, 5, "hash123", "unknown");
+                    return r;
+                });
+
+        mockMvc.perform(post("/api/webhooks/credential-exposure")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("updated"))
+                .andExpect(jsonPath("$.tenantId").value(tenantId))
+                .andExpect(jsonPath("$.newVersion").value(5))
+                .andExpect(jsonPath("$.affectedResource").value("s3:my-bucket"));
+    }
+
+    @Test
+    void handleCredentialExposureWebhook_withCredentials_credentialExpired() throws Exception {
+        String tenantId = "tenant1";
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("tenantId", tenantId);
+        payload.put("awsCredentials", Map.of("accessKey", "AKIA123", "secretKey", "secret"));
+
+        when(discoveryService.pushDiscovery(eq(tenantId), anyMap(), eq("unknown")))
+                .thenAnswer(invocation ->
+                        AwsMetadataDiscoveryService.PushDiscoveryResult.credentialExpired(
+                                tenantId, "AccessDenied"));
+
+        mockMvc.perform(post("/api/webhooks/credential-exposure")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value("credential_expired"))
+                .andExpect(jsonPath("$.message").value("PENDING: CRED_REFRESH - AccessDenied"));
+    }
+
+    @Test
+    void handleCredentialExposureWebhook_withCredentials_validationFailed() throws Exception {
+        String tenantId = "tenant1";
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("tenantId", tenantId);
+        payload.put("awsCredentials", Map.of("accessKey", "AKIA123", "secretKey", "secret"));
+
+        when(discoveryService.pushDiscovery(eq(tenantId), anyMap(), eq("unknown")))
+                .thenAnswer(invocation ->
+                        AwsMetadataDiscoveryService.PushDiscoveryResult.validationFailed(tenantId, 2));
+
+        mockMvc.perform(post("/api/webhooks/credential-exposure")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.status").value("validation_failed"));
+    }
+
+    @Test
+    void handleCredentialExposureWebhook_withCredentials_noChanges() throws Exception {
+        String tenantId = "tenant1";
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("tenantId", tenantId);
+        payload.put("awsCredentials", Map.of("accessKey", "AKIA123", "secretKey", "secret"));
+
+        when(discoveryService.pushDiscovery(eq(tenantId), anyMap(), eq("unknown")))
+                .thenAnswer(invocation ->
+                        AwsMetadataDiscoveryService.PushDiscoveryResult.noChanges(tenantId, "samehash"));
+
+        mockMvc.perform(post("/api/webhooks/credential-exposure")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("no_changes"));
+    }
+
+    @Test
+    void handleCredentialExposureWebhook_withCredentials_skipped() throws Exception {
+        String tenantId = "tenant1";
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("tenantId", tenantId);
+        payload.put("awsCredentials", Map.of("accessKey", "AKIA123", "secretKey", "secret"));
+
+        when(discoveryService.pushDiscovery(eq(tenantId), anyMap(), eq("unknown")))
+                .thenAnswer(invocation ->
+                        AwsMetadataDiscoveryService.PushDiscoveryResult.skipped(tenantId));
+
+        mockMvc.perform(post("/api/webhooks/credential-exposure")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("skipped"));
+    }
+
+    @Test
+    void handleCredentialExposureWebhook_withoutCredentials_queued() throws Exception {
+        String tenantId = "tenant1";
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("tenantId", tenantId);
+        payload.put("resource", "s3:my-bucket");
+
+        mockMvc.perform(post("/api/webhooks/credential-exposure")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("queued"))
+                .andExpect(jsonPath("$.tenantId").value(tenantId))
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void handleCredentialExposureWebhook_missingTenantId_returnsBadRequest() throws Exception {
+        Map<String, Object> payload = Map.of("resource", "s3:my-bucket");
+
+        mockMvc.perform(post("/api/webhooks/credential-exposure")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("tenantId is required in webhook payload"));
+    }
+
+    @Test
+    void triggerPullDiscovery_withCredentials() throws Exception {
+        String tenantId = "tenant1";
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("tenantId", tenantId);
+        payload.put("awsCredentials", Map.of("accessKey", "AKIA123", "secretKey", "secret"));
+
+        when(discoveryService.pushDiscovery(eq(tenantId), anyMap(), eq("pull:external")))
+                .thenAnswer(invocation ->
+                        AwsMetadataDiscoveryService.PushDiscoveryResult.updated(tenantId, 3, "hash", "pull:external"));
+
+        mockMvc.perform(post("/api/webhooks/discovery/pull")
+                        .header("X-Webhook-Source", "external")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("updated"))
+                .andExpect(jsonPath("$.tenantId").value(tenantId))
+                .andExpect(jsonPath("$.source").value("pull:external"));
+    }
+
+    @Test
+    void triggerPullDiscovery_missingTenantId_returnsBadRequest() throws Exception {
+        Map<String, Object> payload = Map.of("awsCredentials", Map.of("accessKey", "AKIA123"));
+
+        mockMvc.perform(post("/api/webhooks/discovery/pull")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("tenantId is required"));
+    }
+
+    @Test
+    void triggerPullDiscovery_missingCredentials_returnsBadRequest() throws Exception {
+        String tenantId = "tenant1";
+        Map<String, Object> payload = Map.of("tenantId", tenantId);
+
+        mockMvc.perform(post("/api/webhooks/discovery/pull")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("awsCredentials are required for pull discovery"));
+    }
+
+    @Test
+    void triggerBatchDiscovery_withMultipleTenants() throws Exception {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("tenantIds", List.of("tenant1", "tenant2", "tenant3"));
+        payload.put("awsCredentials", Map.of("accessKey", "AKIA123", "secretKey", "secret"));
+
+        when(discoveryService.pushDiscovery(eq("tenant1"), anyMap(), eq("batch:external")))
+                .thenAnswer(invocation ->
+                        AwsMetadataDiscoveryService.PushDiscoveryResult.updated("tenant1", 2, "h1", "batch:external"));
+        when(discoveryService.pushDiscovery(eq("tenant2"), anyMap(), eq("batch:external")))
+                .thenAnswer(invocation ->
+                        AwsMetadataDiscoveryService.PushDiscoveryResult.noChanges("tenant2", "h2"));
+        when(discoveryService.pushDiscovery(eq("tenant3"), anyMap(), eq("batch:external")))
+                .thenAnswer(invocation ->
+                        AwsMetadataDiscoveryService.PushDiscoveryResult.failed("tenant3", "AWS error"));
+
+        mockMvc.perform(post("/api/webhooks/discovery/batch")
+                        .header("X-Webhook-Source", "external")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("completed"))
+                .andExpect(jsonPath("$.source").value("batch:external"))
+                .andExpect(jsonPath("$.processed").value(3))
+                .andExpect(jsonPath("$.updated").value(1))
+                .andExpect(jsonPath("$.skipped").value(1))
+                .andExpect(jsonPath("$.failed").value(1))
+                .andExpect(jsonPath("$.results").isArray())
+                .andExpect(jsonPath("$.results[0].status").value("updated"))
+                .andExpect(jsonPath("$.results[1].status").value("no_changes"))
+                .andExpect(jsonPath("$.results[2].status").value("failed"));
+    }
+
+    @Test
+    void triggerBatchDiscovery_emptyTenantIds_returnsBadRequest() throws Exception {
+        Map<String, Object> payload = Map.of("awsCredentials", Map.of("accessKey", "AKIA123"));
+
+        mockMvc.perform(post("/api/webhooks/discovery/batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("tenantIds array is required"));
+    }
+
     private Playbook createSessionTokenPlaybook() {
         Playbook playbook = new Playbook();
         playbook.setPlaybookId("aws-session-token-leaked");

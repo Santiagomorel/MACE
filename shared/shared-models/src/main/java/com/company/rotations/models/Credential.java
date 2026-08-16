@@ -30,6 +30,9 @@ public class Credential {
     @Column(name = "key_id")
     private String keyId;
 
+    @Column(name = "key_secret")
+    private String keySecret;
+
     @JsonProperty("ttl_remaining_seconds")
     @Column(name = "ttl_remaining_seconds")
     private Long ttlRemainingSeconds;
@@ -77,6 +80,9 @@ public class Credential {
 
     public String getKeyId() { return keyId; }
     public void setKeyId(String keyId) { this.keyId = keyId; }
+
+    public String getKeySecret() { return keySecret; }
+    public void setKeySecret(String keySecret) { this.keySecret = keySecret; }
 
     public Long getTtlRemainingSeconds() { return ttlRemainingSeconds; }
     public void setTtlRemainingSeconds(Long ttlRemainingSeconds) { this.ttlRemainingSeconds = ttlRemainingSeconds; }
