@@ -1,4 +1,4 @@
-package com.company.rotations.verification.account.mapper;
+package com.company.rotations.verification.model;
 
 import com.company.rotations.verification.model.CredentialAlert;
 import org.junit.jupiter.api.BeforeEach;

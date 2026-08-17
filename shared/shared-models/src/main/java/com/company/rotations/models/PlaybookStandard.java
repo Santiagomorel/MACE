@@ -19,7 +19,7 @@ public class PlaybookStandard {
     @Column(name = "version", nullable = false)
     private String version;
 
-    @Column(name = "content", columnDefinition = "JSONB", nullable = false)
+    @Column(name = "content", nullable = false)
     private String content;
 
     @Column(name = "provider", nullable = false)

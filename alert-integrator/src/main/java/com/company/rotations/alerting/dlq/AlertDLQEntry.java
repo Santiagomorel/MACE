@@ -11,7 +11,7 @@ public class AlertDLQEntry {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Column(name = "raw_payload", columnDefinition = "jsonb")
+    @Column(name = "raw_payload")
     private String rawPayload;
 
     @Column(name = "error_message", length = 4000)

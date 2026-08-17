@@ -4,7 +4,7 @@
 - [x] [R1] 1.2 Define all 6 modules in parent POM: shared/models, shared/spi, alert-integrator, verification-engine, decision-engine, action-executor
 - [x] [R1] 1.3 Configure dependencyManagement with versions: Spring Boot 3.3.x, AWS SDK v2, Drools/KIE, Testcontainers, JaCoCo
 - [x] [R1] 1.4 Configure pluginManagement: maven-compiler-plugin (Java 21), maven-surefire-plugin, JaCoCo (70% general gate)
-- [ ] [R1] 1.5 Verify `mvn clean package` builds all modules in topological order from parent directory
+- [x] [R1] 1.5 Verify `mvn clean package` builds all modules in topological order from parent directory
 
 ## 2. Shared Models
 
@@ -45,12 +45,12 @@
 - [ ] [R2] 4.10 Create `EventDedupService` using Caffeine cache (key: sourceEventId, TTL: configurable, default 5min)
 - [ ] [R2] 4.11 Create `SecretDedupService` using Caffeine + DB (key: valueHash + repository, state-based cooldowns)
 - [ ] [R2] 4.12 Create `WorkerPool` with configurable size (default 5) and bounded queue (default 1000)
-- [ ] [R2] 4.13 Implement backpressure: return HTTP 429 when queue is full
+- [x] [R2] 4.13 Implement backpressure: return HTTP 429 when queue is full
 - [ ] [R2] 4.14 Create `alert_dlq` table and `DeadLetterQueueService`
 - [ ] [R2] 4.15 Integrate DLQ into processing pipeline (insert on failures)
 - [ ] [R2] 4.16 Implement DLQ cleanup scheduled task (delete entries older than 7 days)
-- [ ] [R2] 4.17 Create `WebhookPipeline` orchestrating: validate auth → event dedup → adapter → secret dedup → worker queue
-- [ ] [R2] 4.18 Write unit tests for AlertController (valid payload, invalid signature, missing signature, invalid IP, missing required fields)
+- [x] [R2] 4.17 Create `WebhookPipeline` orchestrating: validate auth → event dedup → adapter → secret dedup → worker queue
+- [x] [R2] 4.18 Write unit tests for AlertController (valid payload, invalid signature, missing signature, invalid IP, missing required fields)
 - [ ] [R2] 4.19 Write unit tests for GitGuardianAdapter (full mapping, partial mapping, missing optional fields)
 - [ ] [R2] 4.20 Write unit tests for AdapterRegistry (found adapter, missing adapter → NotFoundException)
 - [ ] [R2] 4.21 Write unit tests for EventDedupService (hit, miss, TTL expiration, concurrent access)
@@ -58,20 +58,20 @@
 - [ ] [R2] 4.23 Write unit tests for WorkerPool (concurrent processing, backpressure, worker failure)
 - [ ] [R2] 4.24 Write integration test for end-to-end webhook flow with mocked adapter and cache
 - [ ] [R2] 4.25 Write integration test for DLQ flow (invalid payload → DLQ entry)
-- [ ] [R2] 4.26 Add sample webhook payloads in `src/test/resources/webhooks/` for GitGuardian
+- [x] [R2] 4.26 Add sample webhook payloads in `src/test/resources/webhooks/` for GitGuardian
 
 ## 5. Verification Engine Module
 
-- [ ] [R2] 5.1 Create `verification-engine` module with package `com.company.rotations.verification`
-- [ ] [R2] 5.2 Add POM dependencies to `shared/models`, `shared/spi`, and `alert-integrator`
+- [x] [R2] 5.1 Create `verification-engine` module with package `com.company.rotations.verification`
+- [x] [R2] 5.2 Add POM dependencies to `shared/models`, `shared/spi`, and `alert-integrator`
 - [ ] [R2] 5.3 Configure dependencies: AWS SDK v2 (STS), Spring Boot
 - [ ] [R2] 5.4 Implement `AwsStsVerificationProvider` that calls AWS STS GetCallerIdentity
-- [ ] [R2] 5.5 Implement `BlastRadiusCalculator` that evaluates credential policies to determine scope
+- [x] [R2] 5.5 Implement `BlastRadiusCalculator` that evaluates credential policies to determine scope
 - [ ] [R2] 5.6 Implement `SeverityRuleEngine` that applies per-tenant severity floors
 - [ ] [R2] 5.7 Implement `VerificationService` orchestrating provider call + blast radius + severity rules
-- [ ] [R2] 5.8 Create verification result repository for storing VerificationResult
+- [x] [R2] 5.8 Create verification result repository for storing VerificationResult
 - [ ] [R2] 5.9 Write unit tests for AwsStsVerificationProvider (active key, expired key, invalid key, provider unavailable)
-- [ ] [R2] 5.10 Write unit tests for BlastRadiusCalculator (AdministratorAccess → critical, ReadOnlyAccess → low, custom policies)
+- [x] [R2] 5.10 Write unit tests for BlastRadiusCalculator (AdministratorAccess → critical, ReadOnlyAccess → low, custom policies)
 - [ ] [R2] 5.11 Write unit tests for SeverityRuleEngine (tenant floor higher than calculated, tenant floor lower, no tenant rules → default)
 - [ ] [R2] 5.12 Write integration tests with Testcontainers for verification result persistence
 

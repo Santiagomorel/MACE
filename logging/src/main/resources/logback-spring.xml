@@ -2,7 +2,7 @@
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
-    <property name="LOG_PATTERN" value="{"timestamp":"%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}","level":"%level","logger":"%logger{36}","message":"%msg","trace_id":"%X{trace_id:-}","alert_id":"%X{alert_id:-}","client_id":"%X{client_id:-}","phase":"%X{phase:-}","step":"%X{step:-}","duration_ms":"%X{duration_ms:-}","status":"%X{status:-}"}%n"/>
+    <property name="LOG_PATTERN" value="&quot;{&quot;timestamp&quot;:&quot;%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}&quot;,&quot;level&quot;:&quot;%level&quot;,&quot;logger&quot;:&quot;%logger{36}&quot;,&quot;message&quot;:&quot;%msg&quot;,&quot;trace_id&quot;:&quot;%X{trace_id:-}&quot;,&quot;alert_id&quot;:&quot;%X{alert_id:-}&quot;,&quot;client_id&quot;:&quot;%X{client_id:-}&quot;,&quot;phase&quot;:&quot;%X{phase:-}&quot;,&quot;step&quot;:&quot;%X{step:-}&quot;,&quot;duration_ms&quot;:&quot;%X{duration_ms:-}&quot;,&quot;status&quot;:&quot;%X{status:-}&quot;}&quot;%n"/>
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">

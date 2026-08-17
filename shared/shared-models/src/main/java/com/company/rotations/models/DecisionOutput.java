@@ -34,7 +34,7 @@ public class DecisionOutput {
     @Column(name = "calculated_via")
     private String calculatedVia;
 
-    @Column(name = "playbook_compliance_tags", columnDefinition = "JSONB")
+    @Column(name = "playbook_compliance_tags")
     private String playbookComplianceTags;
 
     @Column(name = "evaluated_rule_version")

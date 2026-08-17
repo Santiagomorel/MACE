@@ -26,7 +26,6 @@ public class RotationAction {
     @Column(name = "credential_type", nullable = false)
     private AlertType credentialType;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private String status = "PENDING";
 

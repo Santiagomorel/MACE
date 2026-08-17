@@ -44,7 +44,7 @@ public class AuditEvent {
     private String step;
 
     @Lob
-    @Column(name = "event_data", columnDefinition = "JSONB", nullable = false)
+    @Column(name = "event_data", nullable = false)
     private String eventData;
 
     @Column(name = "duration_ms")

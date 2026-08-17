@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.Gauge;
 import java.util.concurrent.atomic.AtomicInteger;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,26 +13,31 @@ import org.springframework.context.annotation.Configuration;
 public class MetricsConfiguration {
 
     @Bean
+    @ConditionalOnBean(MeterRegistry.class)
     public MeterRegistryCustomizer<MeterRegistry> metricsCommonTags() {
         return registry -> registry.config().commonTags("application", "rotation-system");
     }
 
     @Bean
+    @ConditionalOnBean(MeterRegistry.class)
     public DedupMetrics dedupMetrics(MeterRegistry meterRegistry) {
         return new DedupMetrics(meterRegistry);
     }
 
     @Bean
+    @ConditionalOnBean(MeterRegistry.class)
     public WebhookMetrics webhookMetrics(MeterRegistry meterRegistry) {
         return new WebhookMetrics(meterRegistry);
     }
 
     @Bean
+    @ConditionalOnBean(MeterRegistry.class)
     public CircuitBreakerMetrics circuitBreakerMetrics(MeterRegistry meterRegistry) {
         return new CircuitBreakerMetrics(meterRegistry);
     }
 
     @Bean
+    @ConditionalOnBean(MeterRegistry.class)
     public AuditMetrics auditMetrics(MeterRegistry meterRegistry) {
         return new AuditMetrics(meterRegistry);
     }

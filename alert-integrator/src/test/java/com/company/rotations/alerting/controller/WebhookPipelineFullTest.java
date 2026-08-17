@@ -1,15 +1,7 @@
 package com.company.rotations.alerting.controller;
 
 import com.company.rotations.alerting.AlertMetricsCollector;
-import com.company.rotations.alerting.adapter.AdapterRegistry;
-import com.company.rotations.alerting.dedup.EventDedupService;
-import com.company.rotations.alerting.dedup.SecretDedupService;
-import com.company.rotations.alerting.dlq.DeadLetterQueueService;
-import com.company.rotations.alerting.model.WebhookPayload;
-import com.company.rotations.logging.service.AuditService;
-import com.company.rotations.models.GenericAlertModel;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import com.company.rotations.alerting.pipeline.WebhookPipeline;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,67 +12,41 @@ import org.springframework.http.ResponseEntity;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
- * Full pipeline integration test using direct constructor injection.
- * Tests the complete flow: webhook -> auth -> dedup -> adapter -> DLQ
- * Verifies metrics are recorded at each stage. (Task 6.5)
+ * Controller integration test verifying delegation to WebhookPipeline.
+ * Tests the complete flow: webhook -> controller -> pipeline -> response.
+ * (Task 4.17, 4.18)
  */
 class WebhookPipelineFullTest {
 
-    private SignatureValidator signatureValidator;
-    private IpWhitelistValidator ipWhitelistValidator;
-    private AdapterRegistry adapterRegistry;
-    private EventDedupService eventDedupService;
-    private SecretDedupService secretDedupService;
-    private DeadLetterQueueService dlqService;
-    private AuditService auditService;
+    private WebhookPipeline webhookPipeline;
     private AlertMetricsCollector metricsCollector;
     private WebhookController controller;
-    private HttpServletRequest request;
-    private HttpServletResponse response;
-
-    private GenericAlertModel mockAlert;
 
     @BeforeEach
     void setUp() {
-        signatureValidator = mock(SignatureValidator.class);
-        ipWhitelistValidator = mock(IpWhitelistValidator.class);
-        adapterRegistry = mock(AdapterRegistry.class);
-        eventDedupService = mock(EventDedupService.class);
-        secretDedupService = mock(SecretDedupService.class);
-        dlqService = mock(DeadLetterQueueService.class);
-        auditService = mock(AuditService.class);
+        webhookPipeline = mock(WebhookPipeline.class);
         metricsCollector = mock(AlertMetricsCollector.class);
-        controller = new WebhookController(
-                signatureValidator, ipWhitelistValidator, adapterRegistry,
-                eventDedupService, secretDedupService, dlqService, auditService, metricsCollector);
-        request = mock(HttpServletRequest.class);
-        response = mock(HttpServletResponse.class);
-
-        mockAlert = mock(GenericAlertModel.class);
-        when(mockAlert.getEventId()).thenReturn("pipeline-test-id");
-        when(mockAlert.getSource()).thenReturn("gitguardian");
-        when(mockAlert.getSourceEventId()).thenReturn("gg-pipeline");
-        when(mockAlert.getDetectedSecret()).thenReturn(null);
-        when(mockAlert.getContext()).thenReturn(null);
+        controller = new WebhookController(webhookPipeline, metricsCollector);
     }
 
     @Nested
-    @DisplayName("Full Pipeline - Happy Path Integration")
-    class FullPipelineHappyPathTests {
+    @DisplayName("Controller - Happy Path Delegation")
+    class ControllerHappyPathTests {
 
         @Test
-        @DisplayName("Should execute complete pipeline: auth -> dedup -> adapter -> DLQ with metrics")
-        void shouldExecuteCompletePipeline() throws Exception {
-            when(signatureValidator.isValid(any(), any(), any())).thenReturn(true);
-            when(ipWhitelistValidator.isAllowed(any(), any())).thenReturn(true);
-            when(eventDedupService.isDuplicate(any())).thenReturn(false);
-            when(secretDedupService.checkOrRegister(any(), any())).thenReturn(SecretDedupService.DedupResult.PROCEED);
-            when(adapterRegistry.adapt(any(), any())).thenReturn(mockAlert);
-            when(adapterRegistry.getProviderName(any())).thenReturn("gitguardian");
+        @DisplayName("Should delegate to pipeline and return accepted response")
+        void shouldDelegatetoPipeline() throws Exception {
+            WebhookPipeline.PipelineResult expectedResult = new WebhookPipeline.PipelineResult(
+                    WebhookPipeline.PipelineResult.Status.ACCEPTED,
+                    Map.of("status", "accepted", "event_id", "evt-123", "source", "gitguardian", "request_id", "req"),
+                    HttpStatus.OK);
+
+            when(webhookPipeline.execute(eq("gitguardian"), any(), anyString())).thenReturn(expectedResult);
 
             Map<String, Object> payload = Map.of(
                     "source", "gitguardian",
@@ -93,113 +59,128 @@ class WebhookPipelineFullTest {
                     )
             );
 
-            ResponseEntity<?> result = controller.handleWebhook(payload, request, response);
+            ResponseEntity<?> result = controller.handleWebhook(payload, null);
 
             assertEquals(HttpStatus.OK, result.getStatusCode());
             @SuppressWarnings("unchecked")
             Map<String, Object> body = (Map<String, Object>) result.getBody();
             assertEquals("accepted", body.get("status"));
-            assertEquals("gitguardian", body.get("source"));
+            assertEquals("evt-123", body.get("event_id"));
 
-            // Verify pipeline execution order
-            verify(signatureValidator).isValid(anyString(), any(), eq("gitguardian"));
-            verify(ipWhitelistValidator).isAllowed(any(), eq("gitguardian"));
-            verify(eventDedupService).isDuplicate("evt-123");
-            verify(secretDedupService).checkOrRegister("sha256abc", "my/repo");
-            verify(adapterRegistry).adapt(eq("gitguardian"), any());
-            verify(dlqService).processAlert(any(WebhookPayload.class));
-
-            // Verify audit logging
-            verify(auditService).logWebhookReceived(eq("gitguardian"), any());
-            verify(auditService).logAlertIngested(eq("gitguardian"), eq(mockAlert), anyString());
-
-            // Verify metrics recording
+            verify(webhookPipeline).execute(eq("gitguardian"), any(), anyString());
             verify(metricsCollector).recordWebhookReceived();
             verify(metricsCollector).recordSource("gitguardian");
-            verify(metricsCollector).recordAdapterRoute("gitguardian");
-            verify(metricsCollector).recordAlertProcessed();
-            verify(metricsCollector).recordPipelineDuration(anyLong());
         }
     }
 
     @Nested
-    @DisplayName("Full Pipeline - Auth Failure Integration")
-    class FullPipelineAuthFailureTests {
+    @DisplayName("Controller - Backpressure Handling (HTTP 429)")
+    class ControllerBackpressureTests {
 
         @Test
-        @DisplayName("Should reject on signature failure with metrics")
-        void shouldRejectOnSignatureFailure() throws Exception {
-            when(signatureValidator.isValid(any(), any(), any())).thenReturn(false);
+        @DisplayName("Should return HTTP 429 when pipeline returns backpressure")
+        void shouldReturn429OnBackpressure() throws Exception {
+            WebhookPipeline.PipelineResult expectedResult = new WebhookPipeline.PipelineResult(
+                    WebhookPipeline.PipelineResult.Status.BACKPRESSURE,
+                    Map.of("status", "backpressure", "message", "Server busy, alert dropped", "request_id", "req"),
+                    HttpStatus.TOO_MANY_REQUESTS);
+
+            when(webhookPipeline.execute(eq("gitguardian"), any(), anyString())).thenReturn(expectedResult);
+
+            Map<String, Object> payload = Map.of("source", "gitguardian", "id", "evt-backpressure");
+
+            ResponseEntity<?> result = controller.handleWebhook(payload, null);
+
+            assertEquals(HttpStatus.TOO_MANY_REQUESTS, result.getStatusCode());
+            @SuppressWarnings("unchecked")
+            Map<String, Object> body = (Map<String, Object>) result.getBody();
+            assertEquals("backpressure", body.get("status"));
+
+            verify(webhookPipeline).execute(eq("gitguardian"), any(), anyString());
+        }
+    }
+
+    @Nested
+    @DisplayName("Controller - Auth Failure Handling")
+    class ControllerAuthFailureTests {
+
+        @Test
+        @DisplayName("Should return HTTP 401 on signature validation failure")
+        void shouldReturn401OnSignatureFailure() throws Exception {
+            WebhookPipeline.PipelineResult expectedResult = new WebhookPipeline.PipelineResult(
+                    WebhookPipeline.PipelineResult.Status.SIGNATURE_INVALID,
+                    Map.of("error", "INVALID_SIGNATURE", "message", "Webhook signature validation failed", "request_id", "req"),
+                    HttpStatus.UNAUTHORIZED);
+
+            when(webhookPipeline.execute(eq("gitguardian"), any(), anyString())).thenReturn(expectedResult);
 
             Map<String, Object> payload = Map.of("source", "gitguardian", "id", "evt-1");
 
-            ResponseEntity<?> result = controller.handleWebhook(payload, request, response);
+            ResponseEntity<?> result = controller.handleWebhook(payload, null);
 
             assertEquals(HttpStatus.UNAUTHORIZED, result.getStatusCode());
             @SuppressWarnings("unchecked")
             Map<String, Object> body = (Map<String, Object>) result.getBody();
             assertEquals("INVALID_SIGNATURE", body.get("error"));
 
-            // Should NOT proceed to dedup or adapter
-            verifyNoInteractions(eventDedupService, secretDedupService, adapterRegistry, dlqService);
-
-            // Should record metrics
-            verify(metricsCollector).recordWebhookReceived();
-            verify(metricsCollector).recordWebhookRejected();
+            verify(webhookPipeline).execute(eq("gitguardian"), any(), anyString());
         }
 
         @Test
-        @DisplayName("Should reject on IP blocked with proper pipeline short-circuit")
-        void shouldRejectOnIpBlocked() throws Exception {
-            when(signatureValidator.isValid(any(), any(), any())).thenReturn(true);
-            when(ipWhitelistValidator.isAllowed(any(), any())).thenReturn(false);
+        @DisplayName("Should return HTTP 403 on IP blocked")
+        void shouldReturn403OnIpBlocked() throws Exception {
+            WebhookPipeline.PipelineResult expectedResult = new WebhookPipeline.PipelineResult(
+                    WebhookPipeline.PipelineResult.Status.IP_FORBIDDEN,
+                    Map.of("error", "IP_FORBIDDEN", "message", "Request from untrusted IP address", "request_id", "req"),
+                    HttpStatus.FORBIDDEN);
+
+            when(webhookPipeline.execute(eq("gitguardian"), any(), anyString())).thenReturn(expectedResult);
 
             Map<String, Object> payload = Map.of("source", "gitguardian", "id", "evt-2");
 
-            ResponseEntity<?> result = controller.handleWebhook(payload, request, response);
+            ResponseEntity<?> result = controller.handleWebhook(payload, null);
 
             assertEquals(HttpStatus.FORBIDDEN, result.getStatusCode());
 
-            // Should NOT proceed to dedup or adapter
-            verifyNoInteractions(eventDedupService, secretDedupService, adapterRegistry, dlqService);
+            verify(webhookPipeline).execute(eq("gitguardian"), any(), anyString());
         }
     }
 
     @Nested
-    @DisplayName("Full Pipeline - Dedup Integration")
-    class FullPipelineDedupTests {
+    @DisplayName("Controller - Dedup Handling")
+    class ControllerDedupTests {
 
         @Test
-        @DisplayName("Should short-circuit on event dedup hit")
-        void shouldShortCircuitOnEventDedup() throws Exception {
-            when(signatureValidator.isValid(any(), any(), any())).thenReturn(true);
-            when(ipWhitelistValidator.isAllowed(any(), any())).thenReturn(true);
-            when(eventDedupService.isDuplicate("dup-event")).thenReturn(true);
+        @DisplayName("Should return duplicate_skipped when event dedup hit")
+        void shouldReturnDuplicateSkipped() throws Exception {
+            WebhookPipeline.PipelineResult expectedResult = new WebhookPipeline.PipelineResult(
+                    WebhookPipeline.PipelineResult.Status.DUPLICATE_SKIPPED,
+                    Map.of("status", "duplicate_skipped", "source_event_id", "dup-event", "request_id", "req"),
+                    HttpStatus.OK);
+
+            when(webhookPipeline.execute(eq("gitguardian"), any(), anyString())).thenReturn(expectedResult);
 
             Map<String, Object> payload = Map.of("source", "gitguardian", "id", "dup-event");
 
-            ResponseEntity<?> result = controller.handleWebhook(payload, request, response);
+            ResponseEntity<?> result = controller.handleWebhook(payload, null);
 
             assertEquals(HttpStatus.OK, result.getStatusCode());
             @SuppressWarnings("unchecked")
             Map<String, Object> body = (Map<String, Object>) result.getBody();
             assertEquals("duplicate_skipped", body.get("status"));
 
-            // Should NOT proceed to secret dedup, adapter, or DLQ
-            verify(secretDedupService, never()).checkOrRegister(any(), any());
-            verify(adapterRegistry, never()).adapt(any(), any());
-            verify(dlqService, never()).processAlert(any());
-
-            verify(metricsCollector).recordEventDedupHit();
+            verify(webhookPipeline).execute(eq("gitguardian"), any(), anyString());
         }
 
         @Test
-        @DisplayName("Should short-circuit on secret dedup cooldown")
-        void shouldShortCircuitOnSecretDedupCooldown() throws Exception {
-            when(signatureValidator.isValid(any(), any(), any())).thenReturn(true);
-            when(ipWhitelistValidator.isAllowed(any(), any())).thenReturn(true);
-            when(eventDedupService.isDuplicate(any())).thenReturn(false);
-            when(secretDedupService.checkOrRegister(any(), any())).thenReturn(SecretDedupService.DedupResult.SKIP_COOLDOWN);
+        @DisplayName("Should return secret_dedup_cooldown status")
+        void shouldReturnSecretDedupCooldown() throws Exception {
+            WebhookPipeline.PipelineResult expectedResult = new WebhookPipeline.PipelineResult(
+                    WebhookPipeline.PipelineResult.Status.SECRET_COOLDOWN,
+                    Map.of("status", "secret_dedup_cooldown", "source_event_id", "evt-cooldown", "request_id", "req"),
+                    HttpStatus.OK);
+
+            when(webhookPipeline.execute(eq("gitguardian"), any(), anyString())).thenReturn(expectedResult);
 
             Map<String, Object> payload = Map.of(
                     "source", "gitguardian",
@@ -207,25 +188,23 @@ class WebhookPipelineFullTest {
                     "incident", Map.of("value_hash", "h1", "repository", "r1")
             );
 
-            ResponseEntity<?> result = controller.handleWebhook(payload, request, response);
+            ResponseEntity<?> result = controller.handleWebhook(payload, null);
 
             assertEquals(HttpStatus.OK, result.getStatusCode());
             @SuppressWarnings("unchecked")
             Map<String, Object> body = (Map<String, Object>) result.getBody();
             assertEquals("secret_dedup_cooldown", body.get("status"));
-
-            verify(adapterRegistry, never()).adapt(any(), any());
-            verify(dlqService, never()).processAlert(any());
-            verify(metricsCollector).recordSecretDedupCooldown();
         }
 
         @Test
-        @DisplayName("Should short-circuit on secret dedup in progress")
-        void shouldShortCircuitOnSecretDedupInProgress() throws Exception {
-            when(signatureValidator.isValid(any(), any(), any())).thenReturn(true);
-            when(ipWhitelistValidator.isAllowed(any(), any())).thenReturn(true);
-            when(eventDedupService.isDuplicate(any())).thenReturn(false);
-            when(secretDedupService.checkOrRegister(any(), any())).thenReturn(SecretDedupService.DedupResult.SKIP_IN_PROGRESS);
+        @DisplayName("Should return secret_in_progress status")
+        void shouldReturnSecretInProgress() throws Exception {
+            WebhookPipeline.PipelineResult expectedResult = new WebhookPipeline.PipelineResult(
+                    WebhookPipeline.PipelineResult.Status.SECRET_IN_PROGRESS,
+                    Map.of("status", "secret_in_progress", "source_event_id", "evt-progress", "request_id", "req"),
+                    HttpStatus.OK);
+
+            when(webhookPipeline.execute(eq("gitguardian"), any(), anyString())).thenReturn(expectedResult);
 
             Map<String, Object> payload = Map.of(
                     "source", "gitguardian",
@@ -233,32 +212,47 @@ class WebhookPipelineFullTest {
                     "incident", Map.of("value_hash", "h2")
             );
 
-            ResponseEntity<?> result = controller.handleWebhook(payload, request, response);
+            ResponseEntity<?> result = controller.handleWebhook(payload, null);
 
             assertEquals(HttpStatus.OK, result.getStatusCode());
             @SuppressWarnings("unchecked")
             Map<String, Object> body = (Map<String, Object>) result.getBody();
             assertEquals("secret_in_progress", body.get("status"));
-
-            verify(adapterRegistry, never()).adapt(any(), any());
-            verify(dlqService, never()).processAlert(any());
-            verify(metricsCollector).recordSecretDedupInProgress();
         }
     }
 
     @Nested
-    @DisplayName("Full Pipeline - Error Handling Integration")
-    class FullPipelineErrorTests {
+    @DisplayName("Controller - Error Handling")
+    class ControllerErrorTests {
 
         @Test
-        @DisplayName("Should send to DLQ when adapter fails and record failure metrics")
-        void shouldSendToDlqOnAdapterFailure() throws Exception {
-            when(signatureValidator.isValid(any(), any(), any())).thenReturn(true);
-            when(ipWhitelistValidator.isAllowed(any(), any())).thenReturn(true);
-            when(eventDedupService.isDuplicate(any())).thenReturn(false);
-            when(secretDedupService.checkOrRegister(any(), any())).thenReturn(SecretDedupService.DedupResult.PROCEED);
-            doThrow(new RuntimeException("Adapter not found"))
-                    .when(adapterRegistry).adapt(any(), any());
+        @DisplayName("Should return 500 when pipeline throws unexpected exception")
+        void shouldReturn500OnUnexpectedError() throws Exception {
+            when(webhookPipeline.execute(eq("gitguardian"), any(), anyString()))
+                    .thenThrow(new RuntimeException("Unexpected error"));
+
+            Map<String, Object> payload = Map.of("source", "gitguardian", "id", "evt-error");
+
+            ResponseEntity<?> result = controller.handleWebhook(payload, null);
+
+            assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, result.getStatusCode());
+            @SuppressWarnings("unchecked")
+            Map<String, Object> body = (Map<String, Object>) result.getBody();
+            assertEquals("error", body.get("status"));
+
+            verify(metricsCollector).recordWebhookReceived();
+            verify(metricsCollector).recordAlertFailed();
+        }
+
+        @Test
+        @DisplayName("Should return processing_failed when pipeline encounters error")
+        void shouldReturnProcessingFailed() throws Exception {
+            WebhookPipeline.PipelineResult expectedResult = new WebhookPipeline.PipelineResult(
+                    WebhookPipeline.PipelineResult.Status.PROCESSING_FAILED,
+                    Map.of("status", "processing_failed", "message", "Alert sent to dead letter queue", "request_id", "req"),
+                    HttpStatus.OK);
+
+            when(webhookPipeline.execute(eq("gitguardian"), any(), anyString())).thenReturn(expectedResult);
 
             Map<String, Object> payload = Map.of(
                     "source", "gitguardian",
@@ -266,16 +260,14 @@ class WebhookPipelineFullTest {
                     "incident", Map.of("value_hash", "h3")
             );
 
-            ResponseEntity<?> result = controller.handleWebhook(payload, request, response);
+            ResponseEntity<?> result = controller.handleWebhook(payload, null);
 
             assertEquals(HttpStatus.OK, result.getStatusCode());
             @SuppressWarnings("unchecked")
             Map<String, Object> body = (Map<String, Object>) result.getBody();
             assertEquals("processing_failed", body.get("status"));
 
-            verify(dlqService).addToDLQ(any(), any(), eq("gitguardian"), eq("evt-error"), eq("pipeline_error"));
-            verify(metricsCollector).recordAlertFailed();
-            verify(metricsCollector).recordAlertToDlq();
+            verify(webhookPipeline).execute(eq("gitguardian"), any(), anyString());
         }
     }
 }

@@ -36,7 +36,7 @@ public class Alert {
     private AlertStatus status = AlertStatus.PENDING;
 
     @Lob
-    @Column(name = "payload", columnDefinition = "JSONB")
+    @Column(name = "payload")
     private String payload;
 
     @Lob

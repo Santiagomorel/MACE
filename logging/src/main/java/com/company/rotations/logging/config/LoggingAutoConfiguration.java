@@ -5,6 +5,7 @@ import com.company.rotations.logging.service.AuditPurgeService;
 import com.company.rotations.logging.service.AuditService;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -26,16 +27,19 @@ public class LoggingAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnBean(com.company.rotations.logging.repository.AuditEventRepository.class)
     public AuditService auditService(com.company.rotations.logging.repository.AuditEventRepository repository) {
         return new AuditService(repository);
     }
 
     @Bean
+    @ConditionalOnBean(com.company.rotations.logging.repository.AuditEventRepository.class)
     public AuditPurgeService auditPurgeService(com.company.rotations.logging.repository.AuditEventRepository repository) {
         return new AuditPurgeService(repository);
     }
 
     @Bean
+    @ConditionalOnBean(MeterRegistry.class)
     public PipelineDurationTracker pipelineDurationTracker(MeterRegistry meterRegistry) {
         return new PipelineDurationTracker(meterRegistry);
     }
