@@ -24,6 +24,7 @@ jobs:
           cache: maven
 
       - name: Build with Maven
+        working-directory: MACE
         run: mvn clean verify
 
       - name: Upload JaCoCo reports
@@ -32,6 +33,6 @@ jobs:
         with:
           name: jacoco-reports
           path: |
-            */target/site/jacoco/
-            */target/site/jacoco-aggregate/
+            MACE/*/target/site/jacoco/
+            MACE/*/target/site/jacoco-aggregate/
           retention-days: 30
