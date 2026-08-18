@@ -42,6 +42,9 @@
         <caffeine.version>3.1.8</caffeine.version>
         <slf4j.version>2.0.16</slf4j.version>
         <logback.contrib.json.version>0.15.0</logback.contrib.json.version>
+
+        <!-- Spring Boot profile (overridable at build time: mvn -Dspring.profiles.active=prod package) -->
+        <spring.profiles.active>dev</spring.profiles.active>
     </properties>
 
     <dependencyManagement>
@@ -191,8 +194,29 @@
                 <plugin>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
+                    <configuration>
+                        <profiles>${spring.profiles.active}</profiles>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>application.yml</include>
+                    <include>application-*.yml</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>application.yml</exclude>
+                    <exclude>application-*.yml</exclude>
+                </excludes>
+            </resource>
+        </resources>
     </build>
 </project>

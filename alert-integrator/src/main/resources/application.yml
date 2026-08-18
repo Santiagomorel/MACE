@@ -1,3 +1,10 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: alert-integrator
+
 app:
   alerting:
     webhook:
@@ -32,42 +39,3 @@ app:
   dlq:
     retention-days: 7
     max-retries: 3
-
-spring:
-  application:
-    name: alert-integrator
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/credential_rotation}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
-    hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-
-logging:
-  level:
-    com.company.rotations.alerting: INFO
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus
-  endpoint:
-    health:
-      show-details: when-authorized
-    prometheus:
-      enabled: true
-  metrics:
-    export:
-      prometheus:
-        enabled: true
-        descriptions: true

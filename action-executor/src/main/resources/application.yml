@@ -1,9 +1,13 @@
 server:
   port: 8084
 
+spring:
+  application:
+    name: action-executor
+
 actionexecutor:
   vault:
-    encryption-key: defaultkey1234567890
+    encryption-key: ${VAULT_ENCRYPTION_KEY:defaultkey1234567890}
   notifications:
     slack:
       webhook-url: ${SLACK_WEBHOOK_URL:}
@@ -16,10 +20,6 @@ actionexecutor:
 
 aws:
   region: ${AWS_REGION:us-east-1}
-
-logging:
-  level:
-    com.company.rotations.actionexecutor: INFO
 
 management:
   endpoints:

@@ -1,0 +1,119 @@
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:verificationengine;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+  flyway:
+    enabled: false
+
+  main:
+    allow-bean-definition-overriding: true
+
+logging:
+  level:
+    com.company.rotations.verification: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/credential_rotation}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  flyway:
+    enabled: true
+
+logging:
+  level:
+    com.company.rotations.verification: INFO
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/credential_rotation}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  flyway:
+    enabled: true
+
+logging:
+  level:
+    com.company.rotations.verification: INFO
+    org.springframework.web: ERROR
+    org.springframework.security: WARN
+    ROOT: WARN
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  datasource:
+    url: ${SPRING_TESTCONTAINERS_JDBC_URL:jdbc:postgresql://localhost:5432/rotation_test}
+    driver-class-name: org.postgresql.Driver
+    username: ${SPRING_TESTCONTAINERS_USERNAME:postgres}
+    password: ${SPRING_TESTCONTAINERS_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+  flyway:
+    enabled: true
+
+  main:
+    allow-bean-definition-overriding: true
+
+logging:
+  level:
+    com.company.rotations.verification: DEBUG

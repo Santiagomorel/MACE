@@ -1,3 +1,10 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: verification-engine
+
 app:
   verification:
     cache:
@@ -21,10 +28,6 @@ app:
         failure-threshold: 5
         success-threshold: 3
         wait-duration-seconds: 60
-
-spring:
-  application:
-    name: verification-engine
 
 resilience4j:
   circuitbreaker:

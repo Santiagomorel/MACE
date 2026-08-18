@@ -4,17 +4,6 @@ server:
 spring:
   application:
     name: decision-engine
-  datasource:
-    url: jdbc:postgresql://localhost:5432/rotation_system
-    username: postgres
-    password: postgres
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
   jackson:
     serialization:
       write-dates-as-timestamps: false
@@ -26,21 +15,18 @@ decision:
     max-drl-size-bytes: 51200
     semaphore-ttl-seconds: 900
 
-# Discovery configuration
   discovery:
     poll-interval-hours: 3
     semaphore-wait-seconds: 30
     scheduled-rate: 10800000
     enabled: true
 
-# Webhook configuration
   webhook:
     credential-exposure:
       enabled: true
       signature-validation: false
     rate-limit-per-tenant-per-minute: 10
 
-# Actuator
 management:
   endpoints:
     web:
@@ -48,4 +34,4 @@ management:
         include: health,info,metrics,prometheus
   endpoint:
     health:
-      show-details: when_authorized
+      show-details: when-authorized

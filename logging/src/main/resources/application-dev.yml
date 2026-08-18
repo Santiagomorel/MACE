@@ -7,8 +7,17 @@ spring:
 logging:
   level:
     com.company.rotations.logging: DEBUG
-    org.springframework.web: INFO
+    com.company.rotations.alerting: DEBUG
+    com.company.rotations.verification: DEBUG
+    com.company.rotations.decision: DEBUG
+    com.company.rotations.actionexecutor: DEBUG
+    org.springframework.web: DEBUG
     org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+
+app:
+  logging:
+    audit-retention-days: 90
 
 management:
   endpoints:
@@ -28,6 +37,10 @@ spring:
 logging:
   level:
     com.company.rotations.logging: INFO
+    com.company.rotations.alerting: INFO
+    com.company.rotations.verification: INFO
+    com.company.rotations.decision: INFO
+    com.company.rotations.actionexecutor: INFO
     org.springframework.web: WARN
     org.springframework.security: WARN
 
@@ -53,8 +66,13 @@ spring:
 logging:
   level:
     com.company.rotations.logging: INFO
+    com.company.rotations.alerting: INFO
+    com.company.rotations.verification: INFO
+    com.company.rotations.decision: INFO
+    com.company.rotations.actionexecutor: INFO
     org.springframework.web: ERROR
     org.springframework.security: WARN
+    ROOT: WARN
 
 app:
   logging:
@@ -74,3 +92,21 @@ management:
         app.pipeline.duration: true
       slo:
         app.pipeline.duration: 50ms,100ms,250ms,500ms,1000ms
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+
+logging:
+  level:
+    com.company.rotations.logging: DEBUG
+    com.company.rotations.alerting: DEBUG
+    com.company.rotations.verification: DEBUG
+    com.company.rotations.decision: DEBUG
+    com.company.rotations.actionexecutor: DEBUG
+
+app:
+  logging:
+    audit-retention-days: 90
