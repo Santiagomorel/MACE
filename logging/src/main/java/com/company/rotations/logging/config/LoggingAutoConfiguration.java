@@ -27,9 +27,12 @@ public class LoggingAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean(com.company.rotations.logging.repository.AuditEventRepository.class)
-    public AuditService auditService(com.company.rotations.logging.repository.AuditEventRepository repository) {
-        return new AuditService(repository);
+    public AuditService auditService(
+            org.springframework.context.ApplicationContext context) {
+        if (context.containsBean("auditEventRepository")) {
+            return new AuditService(context.getBean(com.company.rotations.logging.repository.AuditEventRepository.class));
+        }
+        return new AuditService();
     }
 
     @Bean

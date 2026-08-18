@@ -27,10 +27,22 @@ class LoggingAutoConfigurationTest {
     }
 
     @Test
-    void auditServiceBean_createsService() {
+    void auditServiceBean_createsServiceWithRepository() {
         var repo = mock(com.company.rotations.logging.repository.AuditEventRepository.class);
+        var context = mock(org.springframework.context.ApplicationContext.class);
+        when(context.containsBean("auditEventRepository")).thenReturn(true);
+        when(context.getBean(com.company.rotations.logging.repository.AuditEventRepository.class)).thenReturn(repo);
         LoggingAutoConfiguration config = new LoggingAutoConfiguration();
-        AuditService service = config.auditService(repo);
+        AuditService service = config.auditService(context);
+        assertNotNull(service);
+    }
+
+    @Test
+    void auditServiceBean_createsServiceWithoutRepository() {
+        var context = mock(org.springframework.context.ApplicationContext.class);
+        when(context.containsBean("auditEventRepository")).thenReturn(false);
+        LoggingAutoConfiguration config = new LoggingAutoConfiguration();
+        AuditService service = config.auditService(context);
         assertNotNull(service);
     }
 

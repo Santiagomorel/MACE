@@ -1,0 +1,57 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# IDE - OS
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Log files
+*.log
+logs/
+
+# Secrets and sensitive data
+*.key
+*.pem
+*.p12
+*.jks
+keystore/
+
+# Test containers
+.postgresql/
+
+# Database files
+*.db
+*.h2.db
+*.mv.db
+
+# Docker
+docker-compose.override.yml
+*.pid
+
+# Jacoco
+jacoco/
+.coverage
+
+# OS
+Thumbs.db

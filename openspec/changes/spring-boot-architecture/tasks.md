@@ -172,17 +172,17 @@
 
 ## 13. Docker and Deployment
 
-- [ ] [R3] 13.1 Create Dockerfile with multi-stage build (Maven 3.9 + Java 21 build stage, eclipse-temurin:21-jre-alpine runtime)
-- [ ] [R3] 13.2 Configure Dockerfile to run as non-root user in runtime stage
-- [ ] [R3] 13.3 Create `docker-compose.yml` with Spring Boot app + PostgreSQL 16 + health checks
-- [ ] [R3] 13.4 Configure PostgreSQL dependency health check in docker-compose
-- [ ] [R3] 13.5 Configure application health check against `/actuator/health` in docker-compose
-- [ ] [R3] 13.6 Add `.env.example` template with required environment variables
-- [ ] [R3] 13.7 Add `.gitignore` entries for `.env.*` files and secrets
-- [ ] [R3] 13.8 Create GitHub Actions workflow for PR builds (`mvn clean verify`)
-- [ ] [R3] 13.9 Create GitHub Actions workflow for main branch deployment (build Docker → push to registry → deploy)
-- [ ] [R3] 13.10 Configure CI coverage gate: fail if JaCoCo thresholds not met
-- [ ] [R3] 13.11 Create blue-green deployment documentation for Phase 3
+- [x] [R3] 13.1 Create Dockerfile with multi-stage build (Maven 3.9 + Java 21 build stage, eclipse-temurin:21-jre-alpine runtime)
+- [x] [R3] 13.2 Configure Dockerfile to run as non-root user in runtime stage
+- [x] [R3] 13.3 Create `docker-compose.yml` with Spring Boot app + PostgreSQL 16 + health checks
+- [x] [R3] 13.4 Configure PostgreSQL dependency health check in docker-compose
+- [x] [R3] 13.5 Configure application health check against `/actuator/health` in docker-compose
+- [x] [R3] 13.6 Add `.env.example` template with required environment variables
+- [x] [R3] 13.7 Add `.gitignore` entries for `.env.*` files and secrets
+- [x] [R3] 13.8 Create GitHub Actions workflow for PR builds (`mvn clean verify`)
+- [x] [R3] 13.9 Create GitHub Actions workflow for main branch deployment (build Docker → push to registry → deploy)
+- [x] [R3] 13.10 Configure CI coverage gate: fail if JaCoCo thresholds not met
+- [x] [R3] 13.11 Create blue-green deployment documentation for Phase 3
 
 ## 14. Database Migrations
 

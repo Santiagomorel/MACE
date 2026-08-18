@@ -5,6 +5,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,7 @@ public class SecretDedupService {
     private final long fpCooldownMillis;
     private final long tpCooldownMillis;
 
+    @Autowired
     public SecretDedupService(
             @Value("${app.alerting.secret-dedup.false-positive-cooldown-hours:24}") long fpCooldownHours,
             @Value("${app.alerting.secret-dedup.true-positive-cooldown-hours:1}") long tpCooldownHours) {

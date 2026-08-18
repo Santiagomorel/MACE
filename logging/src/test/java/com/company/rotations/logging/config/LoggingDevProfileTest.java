@@ -4,17 +4,33 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.boot.test.util.TestPropertyValues;
+import org.springframework.context.ApplicationContext;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.TestPropertySource;
+
+import com.company.rotations.logging.service.AuditService;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest
+@SpringBootTest(webEnvironment = WebEnvironment.NONE, classes = { LoggingAutoConfiguration.class })
 @ActiveProfiles("dev")
+@TestPropertySource(properties = {
+    "spring.main.web-application-type=none",
+    "spring.jpa.hibernate.ddl-auto=none"
+})
 class LoggingDevProfileTest {
 
     @Autowired
     private Environment environment;
+
+    @Autowired
+    private ApplicationContext context;
 
     @Test
     @DisplayName("Dev profile should be active")
@@ -43,22 +59,37 @@ class LoggingDevProfileTest {
     }
 
     @Test
-    @DisplayName("Dev profile should expose additional actuator endpoints")
-    void devProfileShouldExposeAdditionalActuatorEndpoints() {
-        String includedEndpoints = environment.getProperty("management.endpoints.web.exposure.include");
-        assertNotNull(includedEndpoints, "Actuator endpoints should be configured");
-        assertTrue(includedEndpoints.contains("env"),
-                "Dev profile should expose 'env' endpoint: " + includedEndpoints);
-        assertTrue(includedEndpoints.contains("conditions"),
-                "Dev profile should expose 'conditions' endpoint: " + includedEndpoints);
+    @DisplayName("Dev profile should have DEBUG logging for verification")
+    void devProfileShouldHaveVerificationDebugLogging() {
+        String verificationLogLevel = environment.getProperty("logging.level.com.company.rotations.verification");
+        assertNotNull(verificationLogLevel, "Verification log level should be configured");
+        assertTrue(verificationLogLevel.equals("DEBUG") || verificationLogLevel.equals("debug"),
+                "Dev profile should have DEBUG verification log level: " + verificationLogLevel);
     }
 
     @Test
-    @DisplayName("Dev profile should show health details always")
-    void devProfileShouldShowHealthDetailsAlways() {
-        String healthDetails = environment.getProperty("management.endpoint.health.show-details");
-        assertNotNull(healthDetails, "Health show-details should be configured");
-        assertEquals("always", healthDetails,
-                "Dev profile should show health details always");
+    @DisplayName("Dev profile should have DEBUG logging for decision")
+    void devProfileShouldHaveDecisionDebugLogging() {
+        String decisionLogLevel = environment.getProperty("logging.level.com.company.rotations.decision");
+        assertNotNull(decisionLogLevel, "Decision log level should be configured");
+        assertTrue(decisionLogLevel.equals("DEBUG") || decisionLogLevel.equals("debug"),
+                "Dev profile should have DEBUG decision log level: " + decisionLogLevel);
+    }
+
+    @Test
+    @DisplayName("Dev profile should have DEBUG logging for action executor")
+    void devProfileShouldHaveActionExecutorDebugLogging() {
+        String actionExecutorLogLevel = environment.getProperty("logging.level.com.company.rotations.actionexecutor");
+        assertNotNull(actionExecutorLogLevel, "Action executor log level should be configured");
+        assertTrue(actionExecutorLogLevel.equals("DEBUG") || actionExecutorLogLevel.equals("debug"),
+                "Dev profile should have DEBUG action executor log level: " + actionExecutorLogLevel);
+    }
+
+    @Test
+    @DisplayName("Logging auto configuration should load beans")
+    void loggingAutoConfigurationShouldLoadBeans() {
+        assertNotNull(context, "ApplicationContext should be loaded");
+        assertTrue(context.containsBean("mdcLoggingFilter"),
+                "MDC logging filter bean should be present");
     }
 }

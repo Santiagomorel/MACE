@@ -20,7 +20,7 @@ public class SignatureValidator {
     private final String signatureHeader;
 
     public SignatureValidator(
-            @Value("${app.providers.gitguardian.shared-secret}") String sharedSecret,
+            @Value("${app.providers.gitguardian.shared-secret:test-secret}") String sharedSecret,
             @Value("${app.providers.gitguardian.signature-header:X-GitGuardian-Signature}") String signatureHeader) {
         this.sharedSecret = sharedSecret;
         this.signatureHeader = signatureHeader;

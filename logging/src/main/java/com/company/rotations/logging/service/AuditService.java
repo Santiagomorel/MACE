@@ -5,7 +5,6 @@ import com.company.rotations.logging.repository.AuditEventRepository;
 import com.company.rotations.models.GenericAlertModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -20,9 +19,17 @@ public class AuditService {
 
     private final AuditEventRepository repository;
     private final ObjectMapper objectMapper;
+    private final boolean persistEnabled;
+
+    public AuditService() {
+        this.repository = null;
+        this.persistEnabled = false;
+        this.objectMapper = new ObjectMapper();
+    }
 
     public AuditService(AuditEventRepository repository) {
         this.repository = repository;
+        this.persistEnabled = true;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -146,7 +153,9 @@ public class AuditService {
                 null,
                 status
             );
-            repository.save(event);
+            if (persistEnabled && repository != null) {
+                repository.save(event);
+            }
             auditLog.info("Audit event: {}", eventType);
         } catch (Exception e) {
             log.error("Failed to persist audit event {}", eventType, e);

@@ -5,6 +5,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +20,7 @@ public class EventDedupService {
     private Cache<String, Instant> cache;
     private final long ttlSeconds;
 
+    @Autowired
     public EventDedupService(
             @Value("${app.alerting.event-dedup-ttl-minutes:5}") long ttlMinutes) {
         this.ttlSeconds = ttlMinutes * 60;
