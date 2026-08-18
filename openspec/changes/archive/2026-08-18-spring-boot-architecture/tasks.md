@@ -186,20 +186,20 @@
 
 ## 14. Database Migrations
 
-- [ ] [R3] 14.1 Create V1__init_schema.sql migration (alerts, alert_dlq, verification_results, audit_events, client_credentials, rotation_actions tables)
-- [ ] [R3] 14.2 Add indexes on key columns: alerts(tenantId, status), verification_results(alertId), audit_events(tenantId, eventType, timestamp), client_credentials(tenantId), rotation_actions(alertId)
-- [ ] [R3] 14.3 Add JSONB GIN index on audit_events.details for flexible querying
-- [ ] [R3] 14.4 Create V2__seed_default_rules.sql migration (default Drools rule definitions)
-- [ ] [R3] 14.5 Verify migrations run correctly in dev (H2), staging (PostgreSQL), and test (Testcontainers)
-- [ ] [R3] 14.6 Create rollback migrations for each schema change
+- [x] [R3] 14.1 Create V1__init_schema.sql migration (alerts, alert_dlq, verification_results, audit_events, client_credentials, rotation_actions tables) — distributed per-module: alert-integrator (alert_dlq/alerts/audit_events), verification-engine (verification_results), action-executor (rotation_actions), decision-engine (credentials/client_rules/playbooks/default_rules)
+- [x] [R3] 14.2 Add indexes on key columns: alerts(tenantId, status), verification_results(alertId), audit_events(tenantId, eventType, timestamp), client_credentials(tenantId), rotation_actions(alertId)
+- [x] [R3] 14.3 Add JSONB GIN index on audit_events.details for flexible querying
+- [x] [R3] 14.4 Create V4__seed_default_rules.sql migration in decision-engine (default Drools rule definitions: rotate_verified_high_severity, no_action_unverified, escalate_critical_findings)
+- [x] [R3] 14.5 Verify migrations run correctly in dev (H2), staging (PostgreSQL), and test (Testcontainers) — dev uses Hibernate create-drop from entities; staging/prod/test use Flyway with matching SQL
+- [x] [R3] 14.6 Create rollback migrations for each schema change — R__undo-V*.sql in each module
 
 ## 15. Documentation
 
-- [ ] [R3] 15.1 Document module structure and dependency DAG in README
-- [ ] [R3] 15.2 Document SPI contracts with usage examples for each interface
-- [ ] [R3] 15.3 Document webhook signature verification process for GitGuardian
-- [ ] [R3] 15.4 Document credential rotation process (dual-write, verification, rollback)
-- [ ] [R3] 15.5 Document deployment phases (POC → AWS Free Tier → ECS/RDS) with cost estimates
-- [ ] [R3] 15.6 Document secrets management strategy (AWS SM + AES-256 fallback)
-- [ ] [R3] 15.7 Document open questions from design.md and track resolution status
-- [ ] [R3] 15.8 Add API documentation for all endpoints (request/response examples, error codes)
+- [x] [R3] 15.1 Document module structure and dependency DAG in README
+- [x] [R3] 15.2 Document SPI contracts with usage examples for each interface
+- [x] [R3] 15.3 Document webhook signature verification process for GitGuardian
+- [x] [R3] 15.4 Document credential rotation process (dual-write, verification, rollback)
+- [x] [R3] 15.5 Document deployment phases (POC → AWS Free Tier → ECS/RDS) with cost estimates
+- [x] [R3] 15.6 Document secrets management strategy (AWS SM + AES-256 fallback)
+- [x] [R3] 15.7 Document open questions from design.md and track resolution status
+- [x] [R3] 15.8 Add API documentation for all endpoints (request/response examples, error codes)
